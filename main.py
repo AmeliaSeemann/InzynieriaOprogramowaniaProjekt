@@ -132,7 +132,18 @@ class MainWindow(QMainWindow):
             print(e)
 
     def connect_photos(self):
-        print("(Connecting Photos)")
+        #zablokowanie przycisku "connect photos"
+        #(trzeba załadować nowe by zrobić ponowne połączenie, ale można to zmienić)
+        but = self.findChildren(QPushButton)[1]
+        but.setEnabled(False)
+        # oczywiście tylko symuluje działanie
+        # w praktyce tu się wykona metoda faktycznie łącząca kawałki
+        # i zwracająca tego rezultat
+        self.set_photo('zdjecia/razem.png')
+        self.reset_state()
+        #pobiera wartośc dokładności z suwaka
+        slider = self.findChildren(QSlider)[0]
+        print(f"Połączono zdjęcia z domniemaną dokładnością {slider.value()} procent.")
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
