@@ -1,23 +1,25 @@
 #TESTOWANIE: po kliknięciu "Load Photos" dobrze wybrać któryś z folderów w "zdjęcia"
-#kolejne foldery testowe powinny mieć same zdjęcia z png
-#aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkicg=h fragmentów
+#Kolejne foldery testowe (jak chcesz je stworzyć) powinny mieć same zdjęcia z png
+#Aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkicg=h fragmentów
 
+#Nie trzeba się przejmować "libpng warning: iCCP: known incorrect sRGB profile"
+#To po prostu się wypisuje w konsoli i tyle, nic się nie psuje z tego co wiem
 
 #ten plik głównie odpowiada za interfejs użytkownika
-#przycinanie i skalowanie zdjęć lepiej zrobić w innym pliku
 #wszystko związane z algorytmem dopasowywania fragmentów na pewno ma być w innym pliku
 import sys
 import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout
+from photos_opencv import get_crop
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 900
 
 
-
+#Wszystko co jest w naszym oknie:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -53,6 +55,7 @@ class MainWindow(QMainWindow):
         #przycisk do ładowania folderu ze zdjęciami
         button_load = QPushButton("Load Photos",self)
         button_load.setCheckable(False)
+
         #łączy się z funckją load_photos
         button_load.clicked.connect(self.load_photos)
         button_load.setGeometry(int(WINDOW_WIDTH * 0.0625)
@@ -70,6 +73,7 @@ class MainWindow(QMainWindow):
                                 , int(WINDOW_HEIGHT * 0.85)
                                 , int(WINDOW_WIDTH * 0.3125)
                                 , int(WINDOW_HEIGHT * 0.1))
+
         # łączy się z funckją connect_photos
         button_connect.clicked.connect(self.connect_photos)
 
@@ -82,6 +86,7 @@ class MainWindow(QMainWindow):
                                 , int(WINDOW_HEIGHT * 0.4)
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
+
         #łączy się z funckją see_next_photo
         button_next.clicked.connect(self.see_next_photo)
 
@@ -94,6 +99,7 @@ class MainWindow(QMainWindow):
                                 , int(WINDOW_HEIGHT * 0.4)
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
+
         # łączy się z funckją see_previous_photo
         button_previous.clicked.connect(self.see_previous_photo)
 
@@ -113,12 +119,14 @@ class MainWindow(QMainWindow):
     def load_photos(self):
         #wybór folderu
         directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+
         try:
             #dopisanie ścieżki do każdego zdjęcia w folderze do listy
             for file in os.listdir(directory):
                 filename = os.fsdecode(file)
                 if filename.endswith(".png"):
                     self.photos_list.append(directory + "/" + filename)
+
             #odblokowanie paru guzików
             but_con = self.findChildren(QPushButton)[1]
             but_con.setEnabled(True)
@@ -127,6 +135,7 @@ class MainWindow(QMainWindow):
 
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
+
         #do potencjalnego ulepszenia
         except Exception as e:
             print(e)
@@ -136,11 +145,13 @@ class MainWindow(QMainWindow):
         #(trzeba załadować nowe by zrobić ponowne połączenie, ale można to zmienić)
         but = self.findChildren(QPushButton)[1]
         but.setEnabled(False)
+
         # oczywiście tylko symuluje działanie
         # w praktyce tu się wykona metoda faktycznie łącząca kawałki
         # i zwracająca tego rezultat
         self.set_photo('zdjecia/razem.png')
         self.reset_state()
+
         #pobiera wartośc dokładności z suwaka
         slider = self.findChildren(QSlider)[0]
         print(f"Połączono zdjęcia z domniemaną dokładnością {slider.value()} procent.")
@@ -184,13 +195,36 @@ class MainWindow(QMainWindow):
         #tworzenie label ze zdjęciem w środku
         label = QLabel(self)
         pixmap = QPixmap(to_what)
-        label.setPixmap(pixmap)
-        lay = self.findChild(QVBoxLayout)
+
+        #zdobycie wartości do odpowiedniego przycięcia ustawianego zdjęcia
+        x, y, width, height = get_crop(to_what)
+
+        #przycięcie zdjęcia
+        cropped_pixmap = pixmap.copy(x, y, width, height)
+
+        #wsadzenie przyciętego zdjęcia do label
+        label.setPixmap(cropped_pixmap)
+
         #usunięcie poprzedniego label ze zdjęciem z layout'u
+        lay = self.findChild(QVBoxLayout)
         for i in reversed(range(lay.count())):
             if (type(lay.itemAt(i).widget()) == QLabel):
                 lay.removeWidget(lay.itemAt(i).widget())
                 break
+
+        #jeżeli przycięte zdjęcie jest mniejsze niż okno programu
+        #to je wyśrodkowywujemy
+        if width < WINDOW_WIDTH and height < WINDOW_HEIGHT:
+            lay.setContentsMargins(int((WINDOW_WIDTH-width)/2),int((WINDOW_WIDTH-width)/2),
+                                   int((WINDOW_HEIGHT-height)/2),int((WINDOW_HEIGHT-height)/2))
+
+        #jeżeli jest większe to je pomniejszamy by się zmieściło
+        else:
+            scale = max(width / WINDOW_WIDTH,height / WINDOW_HEIGHT)
+            scaled_pixmap = cropped_pixmap.scaled(int(width/scale),int(height/scale),Qt.KeepAspectRatio)
+            label.setPixmap(scaled_pixmap)
+            lay.setContentsMargins(0,0,0,0)
+
         #dodanie aktualnego label do layout'u
         lay.addWidget(label)
 
