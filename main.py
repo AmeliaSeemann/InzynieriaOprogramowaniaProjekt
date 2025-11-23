@@ -1,23 +1,59 @@
-import sys
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider
+#TESTOWANIE: po kliknięciu "Load Photos" dobrze wybrać któryś z folderów w "zdjęcia"
+#kolejne foldery testowe powinny mieć same zdjęcia z png
+#aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkicg=h fragmentów
 
+
+#ten plik głównie odpowiada za interfejs użytkownika
+#przycinanie i skalowanie zdjęć lepiej zrobić w innym pliku
+#wszystko związane z algorytmem dopasowywania fragmentów na pewno ma być w innym pliku
+import sys
+import os
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout
+
+#rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 900
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        #ustawianie tytułu i rozmiaru
         self.setWindowTitle("Test")
         self.setFixedWidth(WINDOW_WIDTH)
         self.setFixedHeight(WINDOW_HEIGHT)
+
+        #tworzenie layout'u, który po prostu trzyma jakieś zdjęcie
+        #nie ruszać tego
+        central = QWidget()
+        self.setCentralWidget(central)
+        layout = QVBoxLayout()
+        central.setLayout(layout)
+
+        #stworzenie ui
         self.ui_components()
+        self.reset_state()
 
+    #do wyczyszczenia listy zdjęć i zablokowania odpowiednich przycisków
+    def reset_state(self):
+        self.photos_list = []
+        self.current_photo_index = 0
+        but_con = self.findChildren(QPushButton)[1]
+        but_next = self.findChildren(QPushButton)[2]
+        but_prev = self.findChildren(QPushButton)[3]
+        but_con.setEnabled(False)
+        but_next.setEnabled(False)
+        but_prev.setEnabled(False)
 
+    #tworzenie iterfejsu
     def ui_components(self):
+        #przycisk do ładowania folderu ze zdjęciami
         button_load = QPushButton("Load Photos",self)
         button_load.setCheckable(False)
+        #łączy się z funckją load_photos
         button_load.clicked.connect(self.load_photos)
         button_load.setGeometry(int(WINDOW_WIDTH * 0.0625)
                                 ,int(WINDOW_HEIGHT * 0.85)
@@ -25,32 +61,43 @@ class MainWindow(QMainWindow):
                                 ,int(WINDOW_HEIGHT * 0.1))
         button_load.show()
 
+        #przycisk do dopasowywania zdjęć
+        #nie da się go kliknąć póki nie załadowano zdjęć
         button_connect = QPushButton("Connect Photos",self)
         button_connect.setCheckable(False)
+        button_load.setEnabled(True)
         button_connect.setGeometry(int(WINDOW_WIDTH * 0.625)
                                 , int(WINDOW_HEIGHT * 0.85)
                                 , int(WINDOW_WIDTH * 0.3125)
                                 , int(WINDOW_HEIGHT * 0.1))
+        # łączy się z funckją connect_photos
         button_connect.clicked.connect(self.connect_photos)
 
-
+        #przycisk do zobaczenia następnego zdjęcia z załadowanych
+        # nie da się go kliknąć póki nie załadowano zdjęć
         button_next = QPushButton(">>",self)
         button_next.setCheckable(False)
+        button_next.setEnabled(False)
         button_next.setGeometry(int(WINDOW_WIDTH * 0.85)
                                 , int(WINDOW_HEIGHT * 0.4)
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
+        #łączy się z funckją see_next_photo
         button_next.clicked.connect(self.see_next_photo)
 
+        #przycisk do zobaczenia wcześniejszego zdjęcia z załadowanych
+        # nie da się go kliknąć póki nie załadowano zdjęć
         button_previous = QPushButton("<<",self)
         button_previous.setCheckable(False)
+        button_previous.setEnabled(False)
         button_previous.setGeometry(int(WINDOW_WIDTH * 0.05)
                                 , int(WINDOW_HEIGHT * 0.4)
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
+        # łączy się z funckją see_previous_photo
         button_previous.clicked.connect(self.see_previous_photo)
 
-
+        #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
         slider_decription = QLabel(self)
         slider_decription.setText("Change precision:",)
         slider_decription.setGeometry(int(WINDOW_WIDTH * 0.4125),int(WINDOW_HEIGHT * 0.85),
@@ -64,19 +111,84 @@ class MainWindow(QMainWindow):
                                      int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
 
     def load_photos(self):
-        print("(Loading Photos)")
+        #wybór folderu
+        directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        try:
+            #dopisanie ścieżki do każdego zdjęcia w folderze do listy
+            for file in os.listdir(directory):
+                filename = os.fsdecode(file)
+                if filename.endswith(".png"):
+                    self.photos_list.append(directory + "/" + filename)
+            #odblokowanie paru guzików
+            but_con = self.findChildren(QPushButton)[1]
+            but_con.setEnabled(True)
+            but_next = self.findChildren(QPushButton)[2]
+            but_next.setEnabled(True)
+
+            #wyświetlenie pierwszego zdjęcia z folderu
+            self.set_photo(self.photos_list[0])
+        #do potencjalnego ulepszenia
+        except Exception as e:
+            print(e)
 
     def connect_photos(self):
         print("(Connecting Photos)")
 
+    #zmiana na następne zdjęcie
     def see_next_photo(self):
-        print(">>")
+        self.current_photo_index += 1
+        self.change_viewed_photo(self.current_photo_index)
 
+    #zmiana na poprzednie zdjęcie
     def see_previous_photo(self):
-        print("<<")
+        self.current_photo_index -= 1
+        self.change_viewed_photo(self.current_photo_index)
 
+    #do zmieniania zdjęcia w środku na wybrane (index) z photo_list
+    def change_viewed_photo(self, index):
+        #ustawienie zdjęcia
+        self.set_photo(self.photos_list[index])
+
+        #dostanie się do przycisków
+        but_next = self.findChildren(QPushButton)[2]
+        but_prev = self.findChildren(QPushButton)[3]
+
+        #jeżeli to ostatnie zdjęcie, to przycisk ">>" jest wyłączony
+        #inaczej włączony
+        if (index == len(self.photos_list) - 1):
+            but_next.setEnabled(False)
+        else:
+            but_next.setEnabled(True)
+
+        #jeżeli to pierwsze zdjęcie, to przycisk "<<" jest wyłączony
+        # inaczej włączony
+        if (index == 0):
+            but_prev.setEnabled(False)
+        else:
+            but_prev.setEnabled(True)
+
+    #ustawianie konkretnego zdjęcia jakie ma być widoczne
+    #"to_what" to ścieżka do zdjęcia
+    def set_photo(self, to_what):
+        #tworzenie label ze zdjęciem w środku
+        label = QLabel(self)
+        pixmap = QPixmap(to_what)
+        label.setPixmap(pixmap)
+        lay = self.findChild(QVBoxLayout)
+        #usunięcie poprzedniego label ze zdjęciem z layout'u
+        for i in reversed(range(lay.count())):
+            if (type(lay.itemAt(i).widget()) == QLabel):
+                lay.removeWidget(lay.itemAt(i).widget())
+                break
+        #dodanie aktualnego label do layout'u
+        lay.addWidget(label)
+
+
+#tego nie ruszać
 app = QApplication(sys.argv)
 
+
+#ustawianie czcionki dla label i pushbutton
 label_font = QFont()
 label_font.setPointSize(11)
 button_font = QFont()
@@ -84,6 +196,7 @@ button_font.setPointSize(14)
 QApplication.setFont(label_font,"QLabel")
 QApplication.setFont(button_font,"QPushButton")
 
+#tego nie ruszać
 window = MainWindow()
 window.show()
 app.exec()
