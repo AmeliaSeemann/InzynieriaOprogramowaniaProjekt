@@ -36,6 +36,16 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         central.setLayout(layout)
 
+
+        #tu będzie przetrzymywane końcowe zdjęcie połączonych fragmentów
+        #konieczne do tego, by je zapisać do pliku
+        #w dalszym etapie tworzenia programu, zakładamy że efekt końcowy da
+        #się przełożyć na QPixMap
+        self.end_result = QPixmap()
+
+        #"łączenie" jest na razie udawane, wczytujemy gotowca tu sprecyzowanego:
+        self.temporary_filepath = 'zdjecia/razem.png'
+
         #stworzenie ui
         self.ui_components()
         self.reset_state()
@@ -47,9 +57,11 @@ class MainWindow(QMainWindow):
         but_con = self.findChildren(QPushButton)[1]
         but_next = self.findChildren(QPushButton)[2]
         but_prev = self.findChildren(QPushButton)[3]
+        but_sav = self.findChildren(QPushButton)[4]
         but_con.setEnabled(False)
         but_next.setEnabled(False)
         but_prev.setEnabled(False)
+        but_sav.setEnabled(False)
 
     #tworzenie iterfejsu
     def ui_components(self):
@@ -101,8 +113,17 @@ class MainWindow(QMainWindow):
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
 
-        # łączy się z funckją see_previous_photo
-        button_previous.clicked.connect(self.see_previous_photo)
+        # przycisk do zapisywania efektu końcowego do wybranego pliku
+        button_save= QPushButton("Save photo", self)
+        button_save.setCheckable(False)
+        button_save.setEnabled(False)
+        button_save.setGeometry(int(WINDOW_WIDTH * 0.3525)
+                                    , int(WINDOW_HEIGHT * 0.03)
+                                    , int(WINDOW_WIDTH * 0.3125)
+                                    , int(WINDOW_HEIGHT * 0.08))
+
+        # łączy się z funckją save_photo
+        button_save.clicked.connect(self.save_photo)
 
         #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
         slider_decription = QLabel(self)
@@ -125,13 +146,14 @@ class MainWindow(QMainWindow):
         directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         print(directory)
 
+        #jest try catch jakby ścieżka miała złą nazwę
         try:
             #dopisanie ścieżki do każdego zdjęcia w folderze do listy
             for file in os.listdir(directory):
                 filename = os.fsdecode(file)
+                #przewidujemy na razie tylko .png
                 if filename.endswith(".png"):
                     self.photos_list.append(directory + "/" + filename)
-
                     #potrzebne do przetestowania czy zdjęcie/folder nie ma złej nazwy
                     test = open_photo(self.photos_list[-1])
                     if test is None:
@@ -156,15 +178,34 @@ class MainWindow(QMainWindow):
         but = self.findChildren(QPushButton)[1]
         but.setEnabled(False)
 
-        # oczywiście tylko symuluje działanie
-        # w praktyce tu się wykona metoda faktycznie łącząca kawałki
-        # i zwracająca tego rezultat
-        self.set_photo('zdjecia/razem.png')
+
+
+        #pokazuje gotowe (tymczasowe) zdjęcie połączonych fragmentów
+        self.set_photo(self.temporary_filepath)
         self.reset_state()
+
+        #przetrzymuje je jako QPixMap
+        self.end_result = QPixmap(self.temporary_filepath)
 
         #pobiera wartośc dokładności z suwaka i wyświetla odpowiednią informację
         slider = self.findChildren(QSlider)[0]
         self.message_box(f"Photos connected with a {slider.value()}% precision.","Info")
+
+        #można odblokować przycisk do zapisywania efektu końcowego
+        but_sav = self.findChildren(QPushButton)[4]
+        but_sav.setEnabled(True)
+
+    #zapisywanie końcowego efektu
+    def save_photo(self):
+        #użytkownik może wybrać gdzie zapisać
+        directory = QFileDialog.getSaveFileName(self, "Select File",filter="Images (*.png)")[0]
+        #albo się zapisze
+        try:
+            self.end_result.save(directory[0],"PNG")
+            self.message_box(f"Photos saved to {directory[0]}","Success")
+        #albo nie
+        except Exception as e:
+            self.message_box("Something went wrong with saving...","Error")
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
