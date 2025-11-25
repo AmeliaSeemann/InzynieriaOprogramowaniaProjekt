@@ -166,8 +166,9 @@ class MainWindow(QMainWindow):
             #odblokowanie paru guzików
             but_con = self.findChildren(QPushButton)[1]
             but_con.setEnabled(True)
-            but_next = self.findChildren(QPushButton)[2]
-            but_next.setEnabled(True)
+            if len(self.photos_list)>1:
+                but_next = self.findChildren(QPushButton)[2]
+                but_next.setEnabled(True)
 
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
@@ -212,13 +213,15 @@ class MainWindow(QMainWindow):
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
-        self.current_photo_index += 1
-        self.change_viewed_photo(self.current_photo_index)
+        if self.current_photo_index < len(self.photos_list) - 1:
+            self.current_photo_index += 1
+            self.change_viewed_photo(self.current_photo_index)
 
     #zmiana na poprzednie zdjęcie
     def see_previous_photo(self):
-        self.current_photo_index -= 1
-        self.change_viewed_photo(self.current_photo_index)
+        if self.current_photo_index > 0:
+            self.current_photo_index -= 1
+            self.change_viewed_photo(self.current_photo_index)
 
     #do zmieniania zdjęcia w środku na wybrane (index) z photo_list
     def change_viewed_photo(self, index):
