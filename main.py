@@ -11,8 +11,9 @@ import sys
 import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout
-from photos_opencv import get_crop
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
+    QMessageBox
+from photos_opencv import get_crop,open_photo,get_contours
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
@@ -117,8 +118,12 @@ class MainWindow(QMainWindow):
                                      int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
 
     def load_photos(self):
+        #przystosowanie do załadowania nowych zdjęć
+        self.reset_state()
+
         #wybór folderu
         directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        print(directory)
 
         try:
             #dopisanie ścieżki do każdego zdjęcia w folderze do listy
@@ -126,6 +131,12 @@ class MainWindow(QMainWindow):
                 filename = os.fsdecode(file)
                 if filename.endswith(".png"):
                     self.photos_list.append(directory + "/" + filename)
+
+                    #potrzebne do przetestowania czy zdjęcie/folder nie ma złej nazwy
+                    test = open_photo(self.photos_list[-1])
+                    if test is None:
+                        raise Exception(f"Invalid path: {self.photos_list[-1]}")
+
 
             #odblokowanie paru guzików
             but_con = self.findChildren(QPushButton)[1]
@@ -135,10 +146,9 @@ class MainWindow(QMainWindow):
 
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
-
-        #do potencjalnego ulepszenia
         except Exception as e:
-            print(e)
+            self.message_box(str(e),"Error")
+
 
     def connect_photos(self):
         #zablokowanie przycisku "connect photos"
@@ -152,9 +162,9 @@ class MainWindow(QMainWindow):
         self.set_photo('zdjecia/razem.png')
         self.reset_state()
 
-        #pobiera wartośc dokładności z suwaka
+        #pobiera wartośc dokładności z suwaka i wyświetla odpowiednią informację
         slider = self.findChildren(QSlider)[0]
-        print(f"Połączono zdjęcia z domniemaną dokładnością {slider.value()} procent.")
+        self.message_box(f"Photos connected with a {slider.value()}% precision.","Info")
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
@@ -227,6 +237,15 @@ class MainWindow(QMainWindow):
 
         #dodanie aktualnego label do layout'u
         lay.addWidget(label)
+
+    #żeby wyskakiwało okienko z informacją
+    def message_box(self,text,title):
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.setText(text)
+        msgBox.setWindowTitle(title)
+        msgBox.setStandardButtons(QMessageBox.Ok)
+        returnValue = msgBox.exec()
 
 
 #tego nie ruszać
