@@ -113,6 +113,9 @@ class MainWindow(QMainWindow):
                                 , int(WINDOW_WIDTH * 0.1)
                                 , int(WINDOW_HEIGHT * 0.1))
 
+        # łączy się z funckją see_previous_photo
+        button_previous.clicked.connect(self.see_previous_photo)
+        
         # przycisk do zapisywania efektu końcowego do wybranego pliku
         button_save= QPushButton("Save photo", self)
         button_save.setCheckable(False)
