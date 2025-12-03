@@ -49,3 +49,32 @@ def get_crop(photo):
     x, y, w, h = cv.boundingRect(cnt)
 
     return x, y, w, h
+
+def extract_mask_and_contour(photo):
+    """
+    Zwraca (mask, contour) gdzie:
+     - mask: binarna maska (0/255) obiektu wycieta z calego obrazu
+     - contour: lista punktow (numpy array Nx1x2) największego konturu
+    Zwraca (None, None) jeśli nie uda sie wczytac.
+    """
+    img = open_photo(photo)
+    if img is None:
+        return None, None
+
+    # jeśli jest alfa - użyjemy kanału alfa jako maski
+    if img.ndim == 3 and img.shape[2] == 4:
+        alpha = img[:, :, 3]
+        _, mask = cv.threshold(alpha, 1, 255, cv.THRESH_BINARY)
+    else:
+        # konwertujemy do odcieni szarości
+        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        _, mask = cv.threshold(gray, 250, 255, cv.THRESH_BINARY_INV)
+
+    # znajdź wszystkie kontury
+    contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    if not contours:
+        return mask, None
+
+    # wybierzemy największy kontur
+    contour = max(contours, key=cv.contourArea)
+    return mask, contour
