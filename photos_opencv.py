@@ -152,3 +152,77 @@ def compute_curvature(contour, k=8):
 
     # zwracamy wszystkie wartości
     return indices, curvatures, pts
+
+# wykrywanie krzywizny (cech)
+def find_edge_features_from_curvature(contour, k=8, angle_thresh_deg=15, min_separation=10):
+    """
+    Ta funkcja bierze wyniki z poprzedniej i wybiera tylko najważniejsze miejsca (rogi, wcięcia, wypukłości).
+    Można powiedzieć, że szuka tam, gdzie krawędź wygina się najmocniej i uznaje te miejsca za cechy charakterystyczne.
+
+    Działa tak:
+    1. Dostaje listę kątów skrętu
+    2. Zamienia je na stopnie (żeby łatwiej się porównywało)
+    3. Sprawdza:
+        czy dany punkt wygina się bardziej niż sąsiednie
+        i czy ten skręt jest większy niż ustalony próg (np. 15°)
+    4. Jeśli tak – zapisuje ten punkt jako cechę krawędzi
+
+    angle_thresh_deg – minimalny kąt, od którego uznajemy punkt za ważny
+    min_separation – minimalna odległość między kolejnymi wykrytymi punktami
+
+    Zwraca listę słowników z danymi o cechach krawędzi:
+      [{ 'index': i, 'point': (x,y), 'type': 'protrusion'|'indentation', 'angle_deg': val, 'strength': abs(angle_rad) }, ...]
+    """
+
+    indices, curvatures, pts = compute_curvature(contour, k=k)
+    if indices.size == 0:
+        return []
+
+    angle_deg = np.degrees(np.abs(curvatures))      # zamiana radianów na stopnie
+    sign = np.sign(curvatures)  # -1 lub +1 (według implementacji wyżej)
+
+    # bierzemy wartości bezwzględne
+    abs_curv = np.abs(curvatures)
+
+    N = len(abs_curv)
+    candidates = []
+
+    for i in range(N):
+        # porównanie z punktami po lewej i prawej stronie
+        left = abs_curv[(i-k)%N]
+        right = abs_curv[(i+k)%N]
+        if abs_curv[i] >= left and abs_curv[i] >= right and angle_deg[i] >= angle_thresh_deg:
+            candidates.append((i, abs_curv[i], sign[i], angle_deg[i]))
+
+    if not candidates:
+        return []
+
+    # sortuj po sile malejąco i wybierz z zachowaniem min_separation
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    taken = np.zeros(N, dtype=bool)
+    features = []
+
+    # wybieramy tylko najważniejsze i oddalone od siebie punkty
+    for idx, strength, sgn, angd in candidates:
+        if taken[idx]:
+            continue
+        # zaznacz okolice jako zajęte
+        start = (idx - min_separation) % N
+        end = (idx + min_separation) % N
+        # blokujemy sąsiednie punkty, żeby nie dublować wykryć
+        for j in range(idx - min_separation, idx + min_separation + 1):
+            taken[j % N] = True
+
+        ftype = 'protrusion' if sgn < 0 else 'indentation'
+        # protrusion = wypukłość
+        # indentation = wklęsłość
+
+        features.append({
+            'index': int(idx),
+            'point': tuple(map(int, pts[idx])),     # współrzędne punktu
+            'type': ftype,
+            'angle_deg': float(angd),
+            'strength': float(strength)
+        })
+
+    return features
