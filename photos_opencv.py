@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import math
 
+
 def open_photo(photo):
     return cv.imread(photo, cv.IMREAD_UNCHANGED)
 
@@ -340,7 +341,13 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
     """
     features_list = []
     for photo in photos:
-        features, _ = detect_edge_features(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
+        resized_photo, scale = resize_photo_for_analysis(photo, max_dim=800)
+        features, _ = detect_edge_features(resized_photo, k=10, angle_thresh_deg=15, min_separation=12)
+
+        # zachowanie punktow w oryginalnym rozmiarze
+        for f in features:
+            f['point'] = (int(f['point'][0] / scale), int(f['point'][1] / scale))
+
         features_list.append(features)
 
     matches_graph = {i: {} for i in range(len(photos))}
@@ -362,14 +369,14 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
             matches_graph[i][j] = matches
     return matches_graph
 
-def get_sorted_matches_safe(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
-    features_list = []
-    invalid_photos = []
+def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
 
+    #Tworzy listę dopasowań między cechami wszystkich zdjęć i sortuje je według odległości.
+    #trzeba dodac funkcje do tego
+
+    features_list = []
     for photo in photos:
-        features, _ = detect_edge_features_safe(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
-        if not features:
-            invalid_photos.append(photo)
+        features, _ = detect_edge_features(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
         features_list.append(features)
 
     sorted_matches = []
@@ -387,46 +394,23 @@ def get_sorted_matches_safe(photos, k=10, angle_thresh_deg=15, min_separation=12
                         if dist <= max_dist:
                             sorted_matches.append((i, j, f_i, f_j, dist))
 
+    # sortowanie po odległości rosnąco
     sorted_matches.sort(key=lambda x: x[4])
-    return sorted_matches, invalid_photos
+    return sorted_matches
 
 
-#sprawdzenie czy zdjęcie wczytało się poprawnie i czy kontur został znaleziony
-def detect_edge_features_safe(photo, k=8, angle_thresh_deg=15, min_separation=10, visualize=False):
-    try:
-        mask, contour = extract_mask_and_contour(photo)
-        if contour is None:
-            raise ValueError(f"Nie udało się znaleźć konturu dla zdjęcia: {photo}")
+def resize_photo_for_analysis(photo, max_dim=800):
+    """
+    Skaluje zdjęcie tak, żeby największy wymiar nie przekroczył max_dim.
+    """
+    h, w = photo.shape[:2]
+    scale = 1.0
+    if max(h, w) > max_dim:
+        scale = max_dim / max(h, w)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        resized = cv.resize(photo, (new_w, new_h), interpolation=cv.INTER_AREA)
+        return resized, scale
+    else:
+        return photo.copy(), 1.0
 
-        features = find_edge_features_from_curvature(
-            contour, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation
-        )
-
-        vis = None
-        if visualize:
-            vis = draw_features(photo, features, contour=contour)
-        return features, vis
-
-    except Exception as e:
-        print(f"[ERROR] {e}")
-        return [], None
-
-
-def detect_edge_features_safe(photo, k=8, angle_thresh_deg=15, min_separation=10, visualize=False):
-    try:
-        mask, contour = extract_mask_and_contour(photo)
-        if contour is None:
-            raise ValueError(f"Nie udało się znaleźć konturu dla zdjęcia: {photo}")
-
-        features = find_edge_features_from_curvature(
-            contour, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation
-        )
-
-        vis = None
-        if visualize:
-            vis = draw_features(photo, features, contour=contour)
-        return features, vis
-
-    except Exception as e:
-        print(f"[ERROR] {e}")
-        return [], None
