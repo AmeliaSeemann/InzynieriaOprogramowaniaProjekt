@@ -337,7 +337,6 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
     """
     Dopasowuje cechy wszystkich zdjęć między sobą.
     Zwraca graf dopasowań:
-    matches_graph[photo_i][photo_j] = [(feature_i, feature_j), ...]
     """
     features_list = []
     for photo in photos:
@@ -362,3 +361,72 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
                             matches.append((f_i, f_j))
             matches_graph[i][j] = matches
     return matches_graph
+
+def get_sorted_matches_safe(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
+    features_list = []
+    invalid_photos = []
+
+    for photo in photos:
+        features, _ = detect_edge_features_safe(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
+        if not features:
+            invalid_photos.append(photo)
+        features_list.append(features)
+
+    sorted_matches = []
+
+    for i in range(len(photos)):
+        for j in range(len(photos)):
+            if i == j:
+                continue
+            for f_i in features_list[i]:
+                for f_j in features_list[j]:
+                    if f_i['type'] == 'protrusion' and f_j['type'] == 'indentation':
+                        dx = f_i['point'][0] - f_j['point'][0]
+                        dy = f_i['point'][1] - f_j['point'][1]
+                        dist = (dx**2 + dy**2)**0.5
+                        if dist <= max_dist:
+                            sorted_matches.append((i, j, f_i, f_j, dist))
+
+    sorted_matches.sort(key=lambda x: x[4])
+    return sorted_matches, invalid_photos
+
+
+#sprawdzenie czy zdjęcie wczytało się poprawnie i czy kontur został znaleziony
+def detect_edge_features_safe(photo, k=8, angle_thresh_deg=15, min_separation=10, visualize=False):
+    try:
+        mask, contour = extract_mask_and_contour(photo)
+        if contour is None:
+            raise ValueError(f"Nie udało się znaleźć konturu dla zdjęcia: {photo}")
+
+        features = find_edge_features_from_curvature(
+            contour, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation
+        )
+
+        vis = None
+        if visualize:
+            vis = draw_features(photo, features, contour=contour)
+        return features, vis
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return [], None
+
+
+def detect_edge_features_safe(photo, k=8, angle_thresh_deg=15, min_separation=10, visualize=False):
+    try:
+        mask, contour = extract_mask_and_contour(photo)
+        if contour is None:
+            raise ValueError(f"Nie udało się znaleźć konturu dla zdjęcia: {photo}")
+
+        features = find_edge_features_from_curvature(
+            contour, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation
+        )
+
+        vis = None
+        if visualize:
+            vis = draw_features(photo, features, contour=contour)
+        return features, vis
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return [], None
