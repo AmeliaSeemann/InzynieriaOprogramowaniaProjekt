@@ -337,7 +337,7 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
     """
     Dopasowuje cechy wszystkich zdjęć między sobą.
     Zwraca graf dopasowań:
-
+    matches_graph[photo_i][photo_j] = [(feature_i, feature_j), ...]
     """
     features_list = []
     for photo in photos:
