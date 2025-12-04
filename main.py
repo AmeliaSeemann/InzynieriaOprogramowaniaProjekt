@@ -1,6 +1,6 @@
 #TESTOWANIE: po kliknięciu "Load Photos" dobrze wybrać któryś z folderów w "zdjęcia"
 #Kolejne foldery testowe (jak chcesz je stworzyć) powinny mieć same zdjęcia z png
-#Aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkicg=h fragmentów
+#Aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkich fragmentów
 
 #Nie trzeba się przejmować "libpng warning: iCCP: known incorrect sRGB profile"
 #To po prostu się wypisuje w konsoli i tyle, nic się nie psuje z tego co wiem
@@ -9,11 +9,13 @@
 #wszystko związane z algorytmem dopasowywania fragmentów na pewno ma być w innym pliku
 import sys
 import os
+import cv2 as cv
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
     QMessageBox
-from photos_opencv import get_crop,open_photo,get_contours
+from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features
+
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
@@ -115,7 +117,7 @@ class MainWindow(QMainWindow):
 
         # łączy się z funckją see_previous_photo
         button_previous.clicked.connect(self.see_previous_photo)
-        
+
         # przycisk do zapisywania efektu końcowego do wybranego pliku
         button_save= QPushButton("Save photo", self)
         button_save.setCheckable(False)
@@ -175,29 +177,32 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.message_box(str(e),"Error")
 
-
     def connect_photos(self):
-        #zablokowanie przycisku "connect photos"
-        #(trzeba załadować nowe by zrobić ponowne połączenie, ale można to zmienić)
-        but = self.findChildren(QPushButton)[1]
-        but.setEnabled(False)
+        if not self.photos_list:
+            return
 
+        photo = self.photos_list[self.current_photo_index]
 
+        # wykrywanie wypustek i wcięć
+        features, vis = detect_edge_features(
+            photo,
+            k=10,
+            angle_thresh_deg=15,
+            min_separation=12,
+            visualize=True
+        )
 
-        #pokazuje gotowe (tymczasowe) zdjęcie połączonych fragmentów
-        self.set_photo(self.temporary_filepath)
-        self.reset_state()
+        print("Wykryte cechy:", features)
 
-        #przetrzymuje je jako QPixMap
-        self.end_result = QPixmap(self.temporary_filepath)
+        if vis is not None:
+            cv.imshow("Detected features", vis)
+            cv.waitKey(0)
+            cv.destroyAllWindows()
 
-        #pobiera wartośc dokładności z suwaka i wyświetla odpowiednią informację
-        slider = self.findChildren(QSlider)[0]
-        self.message_box(f"Photos connected with a {slider.value()}% precision.","Info")
-
-        #można odblokować przycisk do zapisywania efektu końcowego
-        but_sav = self.findChildren(QPushButton)[4]
-        but_sav.setEnabled(True)
+        self.message_box(
+            f"Znaleziono {len(features)} cech krawędzi",
+            "Info"
+        )
 
     #zapisywanie końcowego efektu
     def save_photo(self):
