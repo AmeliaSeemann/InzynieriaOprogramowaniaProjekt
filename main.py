@@ -181,7 +181,30 @@ class MainWindow(QMainWindow):
         if not self.photos_list:
             return
 
+
+
         photo = self.photos_list[self.current_photo_index]
+
+        # wykrywanie wypustek i wcięć
+        features, vis = detect_edge_features(
+            photo,
+            k=10,
+            angle_thresh_deg=15,
+            min_separation=12,
+            visualize=True
+        )
+
+        print("Wykryte cechy:", features)
+
+        if vis is not None:
+            cv.imshow("Detected features", vis)
+            cv.waitKey(0)
+            cv.destroyAllWindows()
+
+        self.message_box(
+            f"Znaleziono {len(features)} cech krawędzi",
+            "Info"
+        )
 
         # wykrywanie wypustek i wcięć
         features, vis = detect_edge_features(
