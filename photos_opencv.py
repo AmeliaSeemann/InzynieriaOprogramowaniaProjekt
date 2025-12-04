@@ -78,3 +78,77 @@ def extract_mask_and_contour(photo):
     # wybierzemy największy kontur
     contour = max(contours, key=cv.contourArea)
     return mask, contour
+
+#  wykrywanie krawędzi
+#  krzywizna krawędzi
+def compute_curvature(contour, k=8):
+    """
+    Przechodzi punkt po punkcie po krawędzi obiektu i sprawdza, jak bardzo i w którą stronę skręca linia w każdym miejscu.
+
+    Dla każdego punktu na krawędzi:
+        Bierze punkt przed nim (k punktów wstecz)
+        Bierze punkt za nim (k punktów do przodu)
+        Patrzy, jaki kąt tworzą te trzy punkty
+    Czyli trochę tak, jakby:
+        - stanął w jednym punkcie krawędzi
+        - spojrzał, skąd przyszedł
+        - i dokąd dalej idzie krawędź
+        - i zmierzył „zakręt”
+    Potem zapisuje:
+        - jak duży to skręt (kąt)
+        - w którą stronę (wypukłość czy wklęsłość)
+    Na końcu zwraca:
+        - indeksy punktów konturu
+        - kąty skrętu w tych punktach
+        - współrzędne punktów
+    Czyli: mapa „skręcalności” krawędzi.
+    Uwaga: im większe k -> bardziej wygładzone oszacowanie (bardziej globalne), mniejsze k -> bardziej lokalne.
+    """
+    pts = contour.reshape(-1, 2)
+    N = len(pts)
+
+    # jeśli punktów jest za mało – nie da się nic policzyć
+    if N < 2*k + 1:
+        return np.array([]), np.array([]), np.array([])
+
+    indices = np.arange(N)
+    curvatures = np.zeros(N, dtype=float)       # tu będą zapisane kąty
+
+    # przechodzimy przez każdy punkt po kolei
+    for i in range(N):
+        # wybór punktu przed i po aktualnym punkcie
+        i_prev = (i - k) % N
+        i_next = (i + k) % N
+
+        p_prev = pts[i_prev].astype(float)
+        p = pts[i].astype(float)
+        p_next = pts[i_next].astype(float)
+
+        v1 = p - p_prev
+        v2 = p_next - p
+
+        # długości wektorów
+        n1 = np.linalg.norm(v1)
+        n2 = np.linalg.norm(v2)
+        if n1 == 0 or n2 == 0:      # jeśli któryś wektor ma długość 0 - pomijamy
+            curvatures[i] = 0.0
+            continue
+
+        v1_u = v1 / n1
+        v2_u = v2 / n2
+
+        # kąt między wektorami
+        dot = np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)
+        angle = math.acos(dot)  # zawsze >= 0
+
+        # sprawdzamy, czy to wypukłość, czy wklęsłość (znak kąta)
+        cross = v1_u[0]*v2_u[1] - v1_u[1]*v2_u[0]
+
+        # jeśli cross < 0 to wypukłość, jeśli >= 0 to wklęsłość
+        signed_angle = angle if cross < 0 else -angle
+
+        # zapisujemy końcową wartość krzywizny
+        curvatures[i] = signed_angle
+
+    # zwracamy wszystkie wartości
+    return indices, curvatures, pts
