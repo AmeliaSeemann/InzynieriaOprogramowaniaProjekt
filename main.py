@@ -177,6 +177,15 @@ class MainWindow(QMainWindow):
 
 
     def connect_photos(self):
+
+        # pobranie wartosci z suwaka(w senise moze na przyszlosc ? )
+        slider = self.findChildren(QSlider)[0]
+        precision = slider.value()  # 0–100
+
+        # Im większa precyzja, tym mniejsza tolerancja
+        dir_tolerance = int(60 - (precision * 0.5))  # np: od 60 do 10
+        len_tolerance = int(80 - (precision * 0.7))
+
         #zablokowanie przycisku "connect photos"
         #(trzeba załadować nowe by zrobić ponowne połączenie, ale można to zmienić)
         but = self.findChildren(QPushButton)[1]

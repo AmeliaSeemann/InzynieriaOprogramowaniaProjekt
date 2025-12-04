@@ -78,3 +78,45 @@ def extract_mask_and_contour(photo):
     # wybierzemy największy kontur
     contour = max(contours, key=cv.contourArea)
     return mask, contour
+
+#kształt nie jest tylko obrazem, tylko zestawem matematycznych krawędzi do dopasowania
+def get_edge_vectors(contour, step=30):
+
+    vectors = []
+
+    if contour is None or len(contour) < step + 1:
+        return vectors
+
+    for i in range(0, len(contour) - step, step):
+        p1 = contour[i][0]
+        p2 = contour[i + step][0]
+
+        dx = int(p2[0]) - int(p1[0])
+        dy = int(p2[1]) - int(p1[1])
+
+        length = (dx ** 2 + dy ** 2) ** 0.5
+
+        vectors.append((p1, p2, (dx, dy), length))
+
+    return vectors
+
+
+def vectors_match(vec1, vec2, dir_tolerance=15, len_tolerance=20):
+    """
+    vec1, vec2 = (p1, p2, (dx, dy), length)
+    Sprawdza czy dwa wektory są do siebie przeciwne i mają podobną długość
+    """
+
+    dx1, dy1 = vec1[2]
+    dx2, dy2 = vec2[2]
+
+    l1 = vec1[3]
+    l2 = vec2[3]
+
+    # kierunek przeciwny (dx1 ≈ -dx2 i dy1 ≈ -dy2)
+    direction_ok = (abs(dx1 + dx2) < dir_tolerance) and (abs(dy1 + dy2) < dir_tolerance)
+
+    # podobna długość
+    length_ok = abs(l1 - l2) < len_tolerance
+
+    return direction_ok and length_ok
