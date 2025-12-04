@@ -332,3 +332,33 @@ def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, vis
     if visualize:
         vis = draw_features(photo, features, contour=contour)
     return features, vis
+
+def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
+    """
+    Dopasowuje cechy wszystkich zdjęć między sobą.
+    Zwraca graf dopasowań:
+    matches_graph[photo_i][photo_j] = [(feature_i, feature_j), ...]
+    """
+    features_list = []
+    for photo in photos:
+        features, _ = detect_edge_features(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
+        features_list.append(features)
+
+    matches_graph = {i: {} for i in range(len(photos))}
+
+    for i in range(len(photos)):
+        for j in range(len(photos)):
+            if i == j:
+                continue
+            matches = []
+            for f_i in features_list[i]:
+                for f_j in features_list[j]:
+                    # wypustka pasuje do wcięcia i odwrotnie
+                    if f_i['type'] == 'protrusion' and f_j['type'] == 'indentation':
+                        dx = f_i['point'][0] - f_j['point'][0]
+                        dy = f_i['point'][1] - f_j['point'][1]
+                        dist = (dx**2 + dy**2)**0.5
+                        if dist <= max_dist:
+                            matches.append((f_i, f_j))
+            matches_graph[i][j] = matches
+    return matches_graph
