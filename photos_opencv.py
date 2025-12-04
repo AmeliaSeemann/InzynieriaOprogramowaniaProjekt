@@ -1,12 +1,9 @@
-#W tym pliku powinny być same rzeczy wykorzystujące opencv
-#Czyli na przykład szukanie krawędzi zdjęć, algorytmy dopasowywania itp.
-
 import cv2 as cv
+import numpy as np
+import math
 
-
-#wygląda na bezużyteczne, ale potrzebne to przetestowania nazw plików
 def open_photo(photo):
-    return cv.imread(photo)
+    return cv.imread(photo, cv.IMREAD_UNCHANGED)
 
 def get_contours(photo):
     # znajdywanie konturów zdjęcia
@@ -79,7 +76,6 @@ def extract_mask_and_contour(photo):
     contour = max(contours, key=cv.contourArea)
     return mask, contour
 
-#  wykrywanie krawędzi
 #  krzywizna krawędzi
 def compute_curvature(contour, k=8):
     """
@@ -226,3 +222,113 @@ def find_edge_features_from_curvature(contour, k=8, angle_thresh_deg=15, min_sep
         })
 
     return features
+
+
+#dodatkowo: convexity defects (wcięcia względem wypukłej otoczki)
+def convexity_defects_list(photo):
+    """
+    https://docs.opencv.org/4.x/d5/d45/tutorial_py_contours_more_functions.html
+    Funkcja znajduje wcięcia kształtu względem jego wypukłej otoczki (convex hull).
+    Zwraca listę punktów:
+    - start wcięcia
+    - koniec wcięcia
+    - najgłębszy punkt wcięcia (najbardziej w środku)
+    - głębokość wcięcia
+
+    Jest to przydatne do wykrywania charakterystycznych wgłębień obiektu.
+    """
+
+    # pobranie maski i konturu obiektu ze zdjęcia
+    _, contour = extract_mask_and_contour(photo)
+    if contour is None:
+        return []
+
+    cnt = contour
+    hull = cv.convexHull(cnt, returnPoints=False)
+
+    # szukamy różnic między prawdziwym kształtem a wypukłą wersją
+    # czyli wykrywamy wcięcia (defekty)
+    defects = cv.convexityDefects(cnt, hull)
+
+    res = []
+    for i in range(defects.shape[0]):
+        # s – indeks punktu początkowego wcięcia
+        # e – indeks punktu końcowego wcięcia
+        # f – indeks punktu najgłębszego
+        # depth – głębokość wcięcia
+        s, e, f, depth = defects[i, 0]
+
+        # współrzędne punktów na obrazie
+        start_pt = tuple(cnt[s][0])
+        end_pt = tuple(cnt[e][0])
+        far_pt = tuple(cnt[f][0])
+
+        # zapisujemy informacje o wcięciu do listy
+        res.append({
+            'start_idx': int(s),  # indeks początku wcięcia
+            'end_idx': int(e),  # indeks końca wcięcia
+            'far_idx': int(f),  # indeks najgłębszego punktu
+            'start_pt': start_pt,  # współrzędne początku
+            'end_pt': end_pt,  # współrzędne końca
+            'far_pt': far_pt,  # współrzędne najgłębszego punktu
+            'depth': int(depth)  # głębokość wcięcia
+        })
+
+    return res
+
+
+# wizualizacja cech na obrazie
+def draw_features(photo, features, out_bgr=None, contour=None):
+    """
+    Rysuje features (lista słowników zwróconych przez find_edge_features_from_curvature)
+    na obrazie i zwraca obraz BGR (numpy).
+    Czyli:
+    - obrys obiektu (kontur),
+    - ważne punkty: wypukłości i wcięcia,
+    - małe opisy przy tych punktach.
+    """
+
+    if out_bgr is None:
+        img = open_photo(photo)
+        if img is None:
+            return None
+        # jeśli alpha -> konwert do BGR do rysowania
+        if img.ndim == 3 and img.shape[2] == 4:
+            img_bgr = cv.cvtColor(img[:, :, :3], cv.COLOR_BGR2RGB)
+            img_bgr = cv.cvtColor(img[:, :, :3], cv.COLOR_BGRA2BGR) if False else img[:, :, :3].copy()
+        else:
+            img_bgr = img.copy()
+    else:
+        img_bgr = out_bgr.copy()
+
+    # rysuj kontur
+    if contour is not None:
+        cv.drawContours(img_bgr, [contour], -1, (0, 255, 0), 2)     #zielony kolor
+
+    for f in features:
+        x, y = f['point']
+        if f['type'] == 'protrusion':   #wypukłość
+            color = (255, 0, 0)  # niebieski kolor
+        else:   #wklęsłość
+            color = (0, 0, 255)  # czerwony kolor
+
+        # typ + kąt
+        cv.circle(img_bgr, (x, y), 6, color, -1)
+        cv.putText(img_bgr, f"{f['type'][0]}:{int(f['angle_deg'])}", (x+8, y-8),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, cv.LINE_AA)
+    return img_bgr
+
+# wywołanie rysowania konturów
+def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, visualize=False):
+    """
+    zwraca features i obraz z narysowanymi cechami.
+    """
+    mask, contour = extract_mask_and_contour(photo)
+
+    features = find_edge_features_from_curvature(contour, k=k, angle_thresh_deg=angle_thresh_deg,
+                                                min_separation=min_separation)
+
+    vis = None
+    if visualize:
+        vis = draw_features(photo, features, contour=contour)
+    return features, vis
