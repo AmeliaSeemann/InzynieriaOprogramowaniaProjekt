@@ -92,6 +92,19 @@ class MainWindow(QMainWindow):
         # łączy się z funckją connect_photos
         button_connect.clicked.connect(self.connect_photos)
 
+        # przycisk do wykrywania krawędzi
+        # nie da się go kliknąć, póki nie załadowano zdjęć
+        button_show_edges = QPushButton("Show edges", self)
+        button_show_edges.setCheckable(False)
+        button_show_edges.setEnabled(True)
+        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.5)
+                                    , int(WINDOW_HEIGHT * 0.03)
+                                    , int(WINDOW_WIDTH * 0.5)
+                                    , int(WINDOW_HEIGHT * 0.08))
+
+        # łączy się z funckją show_edges
+        button_show_edges.clicked.connect(self.show_edges)
+        
         #przycisk do zobaczenia następnego zdjęcia z załadowanych
         # nie da się go kliknąć póki nie załadowano zdjęć
         button_next = QPushButton(">>",self)
@@ -215,6 +228,33 @@ class MainWindow(QMainWindow):
         #albo nie
         except Exception as e:
             self.message_box("Something went wrong with saving...","Error")
+
+    def show_edges(self):
+        if not self.photos_list:
+            return
+
+        photo = self.photos_list[self.current_photo_index]
+
+        # wykrywanie wypustek i wcięć
+        features, vis = detect_edge_features(
+            photo,
+            k=10,
+            angle_thresh_deg=15,
+            min_separation=12,
+            visualize=True
+        )
+
+        print("Wykryte cechy:", features)
+
+        if vis is not None:
+            cv.imshow("Detected features", vis)
+            cv.waitKey(0)
+            cv.destroyAllWindows()
+
+        self.message_box(
+            f"Znaleziono {len(features)} cech krawędzi",
+            "Info"
+        )
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
