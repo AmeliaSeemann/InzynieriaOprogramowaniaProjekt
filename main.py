@@ -157,8 +157,10 @@ class MainWindow(QMainWindow):
                                      int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
 
         #etykieta z procentami
-        precision_value_label = QLabel(self)
-        precision_value_label.setText("50%")
+        precision_value_label = QSpinBox(self)
+        precision_value_label.setRange(0,100)
+        precision_value_label.setValue(50)
+        precision_value_label.setSuffix(" %")
         precision_value_label.setGeometry(
             int(WINDOW_WIDTH * 0.48),
             int(WINDOW_HEIGHT * 0.96),  # troszkę niżej od suwaka
@@ -166,10 +168,11 @@ class MainWindow(QMainWindow):
             int(WINDOW_HEIGHT * 0.03)
         )
 
-        def update_precision_label(value):
-            precision_value_label.setText(f"{value}%")
+        #Synchronizacja: suwak -> pole tekstowe
+        precision_slider.valueChanged.connect(precision_value_label.setValue)
 
-        precision_slider.valueChanged.connect(update_precision_label)
+        #Synchronizacja: pole tekstowe -> suwak
+        precision_value_label.valueChanged.connect(precision_slider.setValue)
 
     def load_photos(self):
         #przystosowanie do załadowania nowych zdjęć
