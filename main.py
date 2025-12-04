@@ -156,6 +156,21 @@ class MainWindow(QMainWindow):
         precision_slider.setGeometry(int(WINDOW_WIDTH * 0.4375), int(WINDOW_HEIGHT * 0.917),
                                      int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
 
+        #etykieta z procentami
+        precision_value_label = QLabel(self)
+        precision_value_label.setText("50%")
+        precision_value_label.setGeometry(
+            int(WINDOW_WIDTH * 0.48),
+            int(WINDOW_HEIGHT * 0.96),  # troszkę niżej od suwaka
+            int(WINDOW_WIDTH * 0.05),
+            int(WINDOW_HEIGHT * 0.03)
+        )
+
+        def update_precision_label(value):
+            precision_value_label.setText(f"{value}%")
+
+        precision_slider.valueChanged.connect(update_precision_label)
+
     def load_photos(self):
         #przystosowanie do załadowania nowych zdjęć
         self.reset_state()
