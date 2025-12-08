@@ -60,10 +60,12 @@ class MainWindow(QMainWindow):
         but_next = self.findChildren(QPushButton)[2]
         but_prev = self.findChildren(QPushButton)[3]
         but_sav = self.findChildren(QPushButton)[4]
+        but_edges = self.findChildren(QPushButton)[5]
         but_con.setEnabled(False)
         but_next.setEnabled(False)
         but_prev.setEnabled(False)
         but_sav.setEnabled(False)
+        but_edges.setEnabled(False)
 
     #tworzenie iterfejsu
     def ui_components(self):
@@ -135,10 +137,10 @@ class MainWindow(QMainWindow):
         # nie da się go kliknąć, póki nie załadowano zdjęć
         button_show_edges = QPushButton("Show edges", self)
         button_show_edges.setCheckable(False)
-        button_show_edges.setEnabled(True)
-        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.5)
+        button_show_edges.setEnabled(False)
+        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.6525)
                                     , int(WINDOW_HEIGHT * 0.03)
-                                    , int(WINDOW_WIDTH * 0.5)
+                                    , int(WINDOW_WIDTH * 0.3125)
                                     , int(WINDOW_HEIGHT * 0.08))
         # łączy się z funckją show_edges
         button_show_edges.clicked.connect(self.show_edges)
@@ -202,7 +204,8 @@ class MainWindow(QMainWindow):
             if len(self.photos_list)>1:
                 but_next = self.findChildren(QPushButton)[2]
                 but_next.setEnabled(True)
-
+            but_egdes = self.findChildren(QPushButton)[5]
+            but_egdes.setEnabled(True)
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
         except Exception as e:
