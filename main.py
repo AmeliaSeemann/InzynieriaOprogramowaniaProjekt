@@ -14,7 +14,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
     QMessageBox, QSpinBox
-from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features
+from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
 
 
 #rozmiary okna aplikacji, można zmieniać do testowania
@@ -182,7 +182,6 @@ class MainWindow(QMainWindow):
 
         #wybór folderu
         directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        print(directory)
 
         #jest try catch jakby ścieżka miała złą nazwę
         try:
@@ -213,13 +212,26 @@ class MainWindow(QMainWindow):
 
     #to się zmieni, co nie
     def connect_photos(self):
+
+        #To wypisuje wynik funkcji get_sorted_matches dla aktualnie
+        #wgranych zdjęć
+        sorted_matches = get_sorted_matches(self.photos_list)
+        print("Get sorted matches: ")
+        for match in sorted_matches:
+            print(match)
+
         #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
         #(na razie spreparowany plik)
         self.reset_state()
         self.set_photo(self.temporary_filepath)
+
         #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
         slider = self.findChildren(QSlider)[0]
         self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
+
+
+
+
 
     #zapisywanie końcowego efektu
     def save_photo(self):
