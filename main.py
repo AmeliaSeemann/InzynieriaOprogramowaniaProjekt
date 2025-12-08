@@ -13,7 +13,7 @@ import cv2 as cv
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
-    QMessageBox
+    QMessageBox, QSpinBox
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features
 
 
@@ -92,18 +92,6 @@ class MainWindow(QMainWindow):
         # łączy się z funckją connect_photos
         button_connect.clicked.connect(self.connect_photos)
 
-        # przycisk do wykrywania krawędzi
-        # nie da się go kliknąć, póki nie załadowano zdjęć
-        button_show_edges = QPushButton("Show edges", self)
-        button_show_edges.setCheckable(False)
-        button_show_edges.setEnabled(True)
-        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.5)
-                                    , int(WINDOW_HEIGHT * 0.03)
-                                    , int(WINDOW_WIDTH * 0.5)
-                                    , int(WINDOW_HEIGHT * 0.08))
-
-        # łączy się z funckją show_edges
-        button_show_edges.clicked.connect(self.show_edges)
         
         #przycisk do zobaczenia następnego zdjęcia z załadowanych
         # nie da się go kliknąć póki nie załadowano zdjęć
@@ -142,6 +130,18 @@ class MainWindow(QMainWindow):
 
         # łączy się z funckją save_photo
         button_save.clicked.connect(self.save_photo)
+
+        # przycisk do wykrywania krawędzi
+        # nie da się go kliknąć, póki nie załadowano zdjęć
+        button_show_edges = QPushButton("Show edges", self)
+        button_show_edges.setCheckable(False)
+        button_show_edges.setEnabled(True)
+        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.5)
+                                    , int(WINDOW_HEIGHT * 0.03)
+                                    , int(WINDOW_WIDTH * 0.5)
+                                    , int(WINDOW_HEIGHT * 0.08))
+        # łączy się z funckją show_edges
+        button_show_edges.clicked.connect(self.show_edges)
 
         #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
         slider_decription = QLabel(self)
