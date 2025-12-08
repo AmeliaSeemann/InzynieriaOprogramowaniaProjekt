@@ -340,6 +340,13 @@ def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, vis
         vis = draw_features(photo, features, contour=contour)
     return features, vis
 
+
+#Jako argument bierze listę ścieżek do plików
+#Zwraca graf dopasować, czyli taki słownik gdzie jest napisane
+#które zdjęcie łączy sięz któym i jakim punktem?
+#Ogólnie to coś może być nie tak z działaniem tej funkcji, bo dopiero
+#po zwiększeniu max_dist faktycznie coś znajduje, mimo że na bank mamy
+#punkty co leżą bliżej niż 50 pikseli od siebie
 def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
     """
     Dopasowuje cechy wszystkich zdjęć między sobą.
@@ -349,13 +356,10 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
     for photo in photos:
         resized_photo, scale = resize_photo_for_analysis(photo, max_dim=800)
         features, _ = detect_edge_features(resized_photo, k=10, angle_thresh_deg=15, min_separation=12)
-
         # zachowanie punktow w oryginalnym rozmiarze
         for f in features:
             f['point'] = (int(f['point'][0] / scale), int(f['point'][1] / scale))
-
         features_list.append(features)
-
     matches_graph = {i: {} for i in range(len(photos))}
 
     for i in range(len(photos)):
@@ -375,7 +379,12 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
             matches_graph[i][j] = matches
     return matches_graph
 
+
+#Jako argument bierze ścieżki do plików
+#Zwraca liste {zdjecie1,zdjecie2,cechyRoguZdjecia1,cechyRoguZdjecia2,dystans}
+#Działać działa, ale czy dobrze to należy przetestować
 def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
+
     #Tworzy listę dopasowań między cechami wszystkich zdjęć i sortuje je według odległości.
     #trzeba dodac funkcje do tego
 
@@ -404,12 +413,12 @@ def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max
     sorted_matches.sort(key=lambda x: x[4])
     return sorted_matches
 
-import cv2
+
 def resize_photo_for_analysis(photo, max_dim=800):
     """
     Skaluje zdjęcie tak, żeby największy wymiar nie przekroczył max_dim.
     """
-    photo = cv2.imread(photo)
+    photo = cv.imread(photo)
     h, w = photo.shape[:2]
     scale = 1.0
     if max(h, w) > max_dim:
@@ -420,3 +429,13 @@ def resize_photo_for_analysis(photo, max_dim=800):
         return resized, scale
     else:
         return photo.copy(), 1.0
+
+#Do testowania funkcji match_all_photo_features, w któej coś trzeba naprawić
+# import os
+# folder = "zdjecia/foto_testowe"
+# max_distance = 100
+# photos = []
+# for filename in os.listdir(folder):
+#     photos.append(os.path.join(folder, filename))
+# print(match_all_photos_features(photos=photos,max_dist=max_distance))
+
