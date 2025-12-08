@@ -248,7 +248,7 @@ class MainWindow(QMainWindow):
             visualize=True
         )
 
-        print("Wykryte cechy:", features)
+        print("Detected features:", features)
 
         if vis is not None:
             cv.imshow("Detected features", vis)
@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
             cv.destroyAllWindows()
 
         self.message_box(
-            f"Znaleziono {len(features)} cech krawędzi",
+            f"Detected {len(features)} of edges features",
             "Info"
         )
 
@@ -303,11 +303,23 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(to_what)
 
         #zdobycie wartości do odpowiedniego przycięcia ustawianego zdjęcia
-        x, y, width, height = get_crop(to_what)
+        #x, y, width, height = get_crop(to_what)
 
+
+        #WIĘC OGÓLNIE TO TO PRZYCINANIE MOŻNA SOBIE OLAĆ
+        #WAŻNE BY ZA KULISAMI PRZYCINAŁO SIĘ DOBRZE, ALE
+        #TE ZDJĘCIA CO WIDZI UŻYTKOWNIK NIE MUSZĄ BYĆ PRZYCIĘTE
+        #TO TYLKO MARNOWANIE CZASU NA COŚ CO W SUMIE NIE MA UŻYTECZNOŚCI
+
+        #(można odkomentować jak ktoś ma bardzo ochotę to naprawiać)
         #przycięcie zdjęcia
-        cropped_pixmap = pixmap.copy(x, y, width, height)
+        #cropped_pixmap = pixmap.copy(x, y, width, height)
+        #(ale mnie to już nie obchodzi)
 
+
+        cropped_pixmap = pixmap
+        width = cropped_pixmap.width()
+        height = cropped_pixmap.height()
         #wsadzenie przyciętego zdjęcia do label
         label.setPixmap(cropped_pixmap)
 
@@ -341,7 +353,7 @@ class MainWindow(QMainWindow):
         msgBox.setText(text)
         msgBox.setWindowTitle(title)
         msgBox.setStandardButtons(QMessageBox.Ok)
-        returnValue = msgBox.exec()
+        msgBox.exec()
 
 
 #tego nie ruszać
