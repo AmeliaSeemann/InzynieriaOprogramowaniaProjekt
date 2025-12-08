@@ -208,32 +208,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.message_box(str(e),"Error")
 
+    #to się zmieni, co nie
     def connect_photos(self):
-        if not self.photos_list:
-            return
-
-        photo = self.photos_list[self.current_photo_index]
-
-        # wykrywanie wypustek i wcięć
-        features, vis = detect_edge_features(
-            photo,
-            k=10,
-            angle_thresh_deg=15,
-            min_separation=12,
-            visualize=True
-        )
-
-        print("Wykryte cechy:", features)
-
-        if vis is not None:
-            cv.imshow("Detected features", vis)
-            cv.waitKey(0)
-            cv.destroyAllWindows()
-
-        self.message_box(
-            f"Znaleziono {len(features)} cech krawędzi",
-            "Info"
-        )
+        #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
+        #(na razie spreparowany plik)
+        self.reset_state()
+        self.set_photo(self.temporary_filepath)
+        #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
+        slider = self.findChildren(QSlider)[0]
+        self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
 
     #zapisywanie końcowego efektu
     def save_photo(self):
