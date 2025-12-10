@@ -58,7 +58,7 @@ def extract_mask_and_contour(photo,from_path=True):
 
     #w zależności od tego, czy mamy wczytane zdjęcie czy
     #wczytujemy je ze ścieżki
-    if from_path:
+    if from_path or type(photo) == str:
         img = open_photo(photo)
         if img is None:
             return None, None
@@ -342,7 +342,7 @@ def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, vis
 
 
 #Jako argument bierze listę ścieżek do plików
-#Zwraca graf dopasować, czyli taki słownik gdzie jest napisane
+#Zwraca graf dopasowań, czyli taki słownik gdzie jest napisane
 #które zdjęcie łączy sięz któym i jakim punktem?
 #Ogólnie to coś może być nie tak z działaniem tej funkcji, bo dopiero
 #po zwiększeniu max_dist faktycznie coś znajduje, mimo że na bank mamy
@@ -381,7 +381,8 @@ def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=
 
 
 #Jako argument bierze ścieżki do plików
-#Zwraca liste {zdjecie1,zdjecie2,cechyRoguZdjecia1,cechyRoguZdjecia2,dystans}
+#Zwraca liste która składa się z takich
+# {zdjecie1,zdjecie2,cechyRoguZdjecia1,cechyRoguZdjecia2,dystans}
 #Działać działa, ale czy dobrze to należy przetestować
 def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
 

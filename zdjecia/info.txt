@@ -1,0 +1,10 @@
+kot_w_butach - wersja, gdzie kawałki obrazka leżą na swoich miejscach,
+coś było bardziej z lewej to jest z lewej itd.
+(mniej realistyczne, bo przecież nie wiemy gdzie one leżą, to chcemy odkryć)
+
+kot_w_butach_2 - wersja, gdzie każdy kawałek jest na środku, nieważne gdzie
+znajdował sięoryginalnie
+(bardziej realistycznie, bo tak mogą wyglądać zdjęcia kawałków fresków)
+
+Te zbiory są po to, by testować czy nasz program faktycznie dopasowuje według
+kształtów (dobrze) czy tylko według położenia (bardzo źle...).

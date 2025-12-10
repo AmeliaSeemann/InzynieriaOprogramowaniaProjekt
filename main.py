@@ -196,7 +196,9 @@ class MainWindow(QMainWindow):
                     if test is None:
                         raise Exception(f"Invalid path: {self.photos_list[-1]}")
 
-
+        except Exception as e:
+            self.message_box(str(e),"Error")
+        finally:
             #odblokowanie paru guzików
             but_con = self.findChildren(QPushButton)[1]
             but_con.setEnabled(True)
@@ -207,8 +209,7 @@ class MainWindow(QMainWindow):
             but_egdes.setEnabled(True)
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
-        except Exception as e:
-            self.message_box(str(e),"Error")
+
 
     #to się zmieni, co nie
     def connect_photos(self):
@@ -248,29 +249,31 @@ class MainWindow(QMainWindow):
     def show_edges(self):
         if not self.photos_list:
             return
+        try:
+            photo = self.photos_list[self.current_photo_index]
 
-        photo = self.photos_list[self.current_photo_index]
+            # wykrywanie wypustek i wcięć
+            features, vis = detect_edge_features(
+                photo,
+                k=10,
+                angle_thresh_deg=15,
+                min_separation=12,
+                visualize=True
+            )
 
-        # wykrywanie wypustek i wcięć
-        features, vis = detect_edge_features(
-            photo,
-            k=10,
-            angle_thresh_deg=15,
-            min_separation=12,
-            visualize=True
-        )
+            print("Detected features:", features)
 
-        print("Detected features:", features)
+            if vis is not None:
+                cv.imshow("Detected features", vis)
+                cv.waitKey(0)
+                cv.destroyAllWindows()
 
-        if vis is not None:
-            cv.imshow("Detected features", vis)
-            cv.waitKey(0)
-            cv.destroyAllWindows()
-
-        self.message_box(
-            f"Detected {len(features)} of edges features",
-            "Info"
-        )
+            self.message_box(
+                f"Detected {len(features)} of edges features",
+                "Info"
+            )
+        except Exception as e:
+            self.message_box(str(e),"Oopsie")
 
     #zmiana na następne zdjęcie
     def see_next_photo(self):
