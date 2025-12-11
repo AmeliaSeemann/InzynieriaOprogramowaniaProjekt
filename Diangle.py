@@ -73,7 +73,7 @@ def one_photo_diangles(photo):
         angle = features[i]["angle_deg"]
         new_diangle = Diangle(center_coords,left_coords,right_coords,angle)
         some_diangles.append(new_diangle)
-    #tu jeszcze łączy te z końca i początku ze sobą, bo nie było jak tego dać do pętli
+    #tu jeszcze łączy dwie ostatnei kropki z pierwszą
     last = features[-1]
     previous_to_last = features[-2]
     first = features[0]
@@ -82,6 +82,15 @@ def one_photo_diangles(photo):
     right_coords = list(first["point"])
     angle = last["angle_deg"]
     some_diangles.append(Diangle(center_coords,left_coords,right_coords,angle))
+
+    #tu jeszcze łączy dwie pierwsze kropki z ostatnią
+    second = features[1]
+    center_coords = list(first["point"])
+    left_coords = list(last["point"])
+    right_coords = list(second["point"])
+    angle = first["angle_deg"]
+    some_diangles.append(Diangle(center_coords, left_coords, right_coords, angle))
+
     return some_diangles
 
 #to zwraca "dwójkąty" dla listy zdjęć

@@ -15,7 +15,7 @@ from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
     QMessageBox, QSpinBox
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
-from matching import true_match_all_photos
+from matching import true_match_all_photos,draw_matches
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
@@ -225,7 +225,8 @@ class MainWindow(QMainWindow):
         #     print(match)
 
         #wywołuje na razie eksperymentalną funkcję z pliku matching.py
-        true_match_all_photos(self.photos_list)
+        matches = true_match_all_photos(self.photos_list)
+        draw_matches(matches,self.photos_list)
 
         #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
         #(na razie spreparowany plik)
@@ -235,8 +236,6 @@ class MainWindow(QMainWindow):
         #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
         slider = self.findChildren(QSlider)[0]
         self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
-
-
 
 
 
