@@ -1,3 +1,6 @@
+#Ten plik odpowiada wyłącznie za zdefiniowanie Diangle'ów oraz
+#funkcje potrzebne do ich stworzenia lub porównywania.
+#Funkcje porównujące faktycznie zdjęcia mają być w matching.py.
 from photos_opencv import detect_edge_features, open_photo
 
 #diangle - "dwójkąt" (słowo zmyślone) [powinny się nazwyać "jednokątami" bo mają tylko jeden kąt ale cicho...]
@@ -18,11 +21,13 @@ class Diangle:
 
     #jakaś tam metoda do wypisywania
     def __str__(self):
-        print("---DIANGLE---")
-        print(f"({self.xl},{self.yl}) -- ({self.x},{self.y}) -- ({self.xl},{self.yl}) ")
-        print(f"Left arm: {self.left_arm}, Right arm: {self.right_arm}")
-        print(f"Angle: {self.angle}")
-        print("-------------")
+            s=""
+            s+="---DIANGLE---\n"
+            s+=f"({self.xl},{self.yl}) -- ({self.x},{self.y}) -- ({self.xr},{self.yr})\n"
+            s+=f"Left arm: {self.left_arm}, Right arm: {self.right_arm}\n"
+            s+=f"Angle: {self.angle}\n"
+            s+="-------------"
+            return s
 
     #jakieś tam do liczenia dystansu
     @staticmethod
@@ -40,10 +45,12 @@ def diangles_similarity(d1,d2):
     #różnice względne między ramionami
     #trzeba będzie dopracować czy jakoś ich nie odwracać miejscami?
     left_arm_ratio = abs(d1.left_arm - d2.left_arm)/d1.left_arm
-    right_arm_ratio = abs(d1.right_arm - d2.right_arm)/d2.right_arm
+    right_arm_ratio = abs(d1.right_arm - d2.right_arm)/d1.right_arm
 
     #różnica względna między kątami
-    angle_ratio = abs(d1.angle - d2.angle)/d1.angle
+    #jeden jestwypukły a drugi wklęsły, więc dlatego "odwracamy" tu ten drugi
+    real_d2_angle = 180-d2.angle
+    angle_ratio = abs(d1.angle - real_d2_angle)/d1.angle
 
     #im były do siebie podobniejsze, tym większe będą te wartości
     left_arm_perc = 100-left_arm_ratio
@@ -51,7 +58,7 @@ def diangles_similarity(d1,d2):
     angle_perc = 100-angle_ratio
 
     #zwraca to co wyżej tylko przemnożone przez tamte wagi
-    return left_arm_perc*arm_wage + right_arm_perc*arm_wage+angle_perc*angle_wage
+    return left_arm_perc * arm_wage + right_arm_perc * arm_wage + angle_perc * angle_wage
 
 #to zwraca zestaw "dwójkątów" dla jednego zdjęcia
 def one_photo_diangles(photo):
@@ -63,7 +70,8 @@ def one_photo_diangles(photo):
         left_coords = list(features[i-1]["point"])
         right_coords = list(features[i + 1]["point"])
         angle = features[i]["angle_deg"]
-        some_diangles.append(Diangle(center_coords,left_coords,right_coords,angle))
+        new_diangle = Diangle(center_coords,left_coords,right_coords,angle)
+        some_diangles.append(new_diangle)
     #tu jeszcze łączy te z końca i początku ze sobą, bo nie było jak tego dać do pętli
     last = features[-1]
     previous_to_last = features[-2]

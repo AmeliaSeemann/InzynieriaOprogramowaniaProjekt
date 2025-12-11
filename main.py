@@ -15,7 +15,7 @@ from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
     QMessageBox, QSpinBox
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
-
+from matching import true_match_all_photos
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
@@ -218,14 +218,14 @@ class MainWindow(QMainWindow):
     #to się zmieni, co nie
     def connect_photos(self):
 
-        #To wypisuje wynik funkcji get_sorted_matches dla aktualnie
-        #wgranych zdjęć
-        sorted_matches = get_sorted_matches(self.photos_list)
-
-        # to jest zakomentowane bo wyniki dosłownie nie mieszczą sięczasem w konsoli
+        # to jest zakomentowane bo wyniki dosłownie nie mieszczą się czasem w konsoli
+        # sorted_matches = get_sorted_matches(self.photos_list)
         # print("Get sorted matches: ")
         # for match in sorted_matches:
         #     print(match)
+
+        #wywołuje na razie eksperymentalną funkcję z pliku matching.py
+        true_match_all_photos(self.photos_list)
 
         #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
         #(na razie spreparowany plik)
