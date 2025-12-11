@@ -2,12 +2,11 @@
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
 
 from Diangle import all_photos_diangles,diangles_difference
+import cv2 as cv
 
-#dopasowywanie zdjęć
-#jest true, bo faktycznie ma działać
 
 #AKTUALNE PROBLEMY: na bank dopasowuje kąty proste i półproste jako ~idealne~,
-#więc jak jakieś zdjęciejest "na rogu" to stwierdzi że pasuje do innego zdjęcia
+#więc jak jakieś zdjęcie jest "na rogu" to stwierdzi że pasuje do innego zdjęcia
 #"na rogu", nawet jak są to zupełnie przeciwne rogi obrazka
 
 def true_match_all_photos(photos):
@@ -55,14 +54,21 @@ def true_match_all_photos(photos):
                             matches.append(single_match)
             current_photo += 1
 
-            #sotruje dopasowania według podobieństwa malejąco
-            sorted_matches = sorted(matches, key=lambda d: d['Difference'])
+        #sotruje dopasowania według podobieństwa malejąco
+        sorted_matches = sorted(matches, key=lambda d: d['Difference'])
 
-            #wyświetla tylko ileś topowych dopasowań, bo wszystkie się nie mieszczą
-            print("Sorted matches:")
-            for k in range(number_of_top_matches):
-                print(sorted_matches[k])
+        #wyświetla tylko ileś topowych dopasowań, bo wszystkie się nie mieszczą
+        print("Sorted matches:")
+        for k in range(number_of_top_matches):
+            print(sorted_matches[k])
 
     #to tak na wszelki wypadek bo wcześniej było parę problemów
     except Exception as e:
         print(e)
+
+
+#ma rysować Point1 na Photo1
+#rysować Point2 na Photo2
+#jakoś połączyć te dwa zdjęcia i pokazać czy match ma wogóle sens
+def show_matches(matches):
+    pass

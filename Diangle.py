@@ -55,7 +55,7 @@ def diangles_difference(d1, d2):
 
     #różnica względna między kątami
     #jeden jest wypukły a drugi wklęsły, więc dlatego "odwracamy" tu ten drugi
-    real_d2_angle = 180-d2.angle
+    real_d2_angle = d2.angle
     angle_ratio = (abs(d1.angle - real_d2_angle)/d1.angle)*100
 
     #zwraca to co wyżej tylko przemnożone przez tamte wagi
