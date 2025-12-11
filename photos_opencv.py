@@ -48,7 +48,7 @@ def get_crop(photo):
 
     return x, y, w, h
 
-def extract_mask_and_contour(photo,from_path=True):
+def extract_mask_and_contour(photo,from_path=False):
     """
     Zwraca (mask, contour) gdzie:
      - mask: binarna maska (0/255) obiektu wycieta z calego obrazu
@@ -64,7 +64,6 @@ def extract_mask_and_contour(photo,from_path=True):
             return None, None
     else:
         img = photo
-
     # jeśli jest alfa - użyjemy kanału alfa jako maski
     if img.ndim == 3 and img.shape[2] == 4:
         alpha = img[:, :, 3]
@@ -227,7 +226,6 @@ def find_edge_features_from_curvature(contour, k=8, angle_thresh_deg=15, min_sep
             'angle_deg': float(angd),
             'strength': float(strength)
         })
-
     return features
 
 
@@ -330,7 +328,7 @@ def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, vis
     """
     zwraca features i obraz z narysowanymi cechami.
     """
-    mask, contour = extract_mask_and_contour(photo,False)
+    mask, contour = extract_mask_and_contour(photo,from_path=False)
 
     features = find_edge_features_from_curvature(contour, k=k, angle_thresh_deg=angle_thresh_deg,
                                                 min_separation=min_separation)
@@ -412,6 +410,7 @@ def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max
 
     # sortowanie po odległości rosnąco
     sorted_matches.sort(key=lambda x: x[4])
+
     return sorted_matches
 
 
@@ -439,4 +438,5 @@ def resize_photo_for_analysis(photo, max_dim=800):
 # for filename in os.listdir(folder):
 #     photos.append(os.path.join(folder, filename))
 # print(match_all_photos_features(photos=photos,max_dist=max_distance))
+
 

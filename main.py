@@ -185,11 +185,15 @@ class MainWindow(QMainWindow):
 
         #jest try catch jakby ścieżka miała złą nazwę
         try:
+            #do wyświetlania realnego indeksu zdjęcia
+            i = 0
             #dopisanie ścieżki do każdego zdjęcia w folderze do listy
             for file in os.listdir(directory):
                 filename = os.fsdecode(file)
                 #przewidujemy na razie tylko .png
                 if filename.endswith(".png"):
+                    print(filename, f"(REAL index: {i})")
+                    i+=1
                     self.photos_list.append(directory + "/" + filename)
                     #potrzebne do przetestowania czy zdjęcie/folder nie ma złej nazwy
                     test = open_photo(self.photos_list[-1])
@@ -217,9 +221,11 @@ class MainWindow(QMainWindow):
         #To wypisuje wynik funkcji get_sorted_matches dla aktualnie
         #wgranych zdjęć
         sorted_matches = get_sorted_matches(self.photos_list)
-        print("Get sorted matches: ")
-        for match in sorted_matches:
-            print(match)
+
+        # to jest zakomentowane bo wyniki dosłownie nie mieszczą sięczasem w konsoli
+        # print("Get sorted matches: ")
+        # for match in sorted_matches:
+        #     print(match)
 
         #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
         #(na razie spreparowany plik)
@@ -382,6 +388,7 @@ button_font = QFont()
 button_font.setPointSize(14)
 QApplication.setFont(label_font,"QLabel")
 QApplication.setFont(button_font,"QPushButton")
+
 
 #tego nie ruszać
 window = MainWindow()
