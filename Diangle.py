@@ -34,31 +34,32 @@ class Diangle:
     def distance(x1,y1,x2,y2):
         return (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
 
-#do sprawdzania na ile dwa "dwójkąty" są do siebie podobne
-def diangles_similarity(d1,d2):
+
+#AKTUALNE PROBLEMY: nie wiem, czy nie trzeba amieniać czasem ramion miejscami
+#ani czy to odejmowanie drugiego kątu od 180 jest serio dobrym pomysłem
+
+#do sprawdzania na ile dwa "dwójkąty" są od siebie różne
+#czyli im MNIEJSZĄ liczbę zwraca, tym są podobniejsze
+def diangles_difference(d1, d2):
 
     #wagi tego, jak dużo znaczą podobieństwa kąta i podobieństwa ramienia
     #na razie wszystko jest ustawione na tyle samo
-    angle_wage = 1/3
+    #można z tym poeksperymentować
+    angle_wage = 0.33
     arm_wage = (1-angle_wage)/2
 
     #różnice względne między ramionami
     #trzeba będzie dopracować czy jakoś ich nie odwracać miejscami?
-    left_arm_ratio = abs(d1.left_arm - d2.left_arm)/d1.left_arm
-    right_arm_ratio = abs(d1.right_arm - d2.right_arm)/d1.right_arm
+    left_arm_ratio = (abs(d1.left_arm - d2.left_arm)/d1.left_arm)*100
+    right_arm_ratio = (abs(d1.right_arm - d2.right_arm)/d1.right_arm)*100
 
     #różnica względna między kątami
-    #jeden jestwypukły a drugi wklęsły, więc dlatego "odwracamy" tu ten drugi
+    #jeden jest wypukły a drugi wklęsły, więc dlatego "odwracamy" tu ten drugi
     real_d2_angle = 180-d2.angle
-    angle_ratio = abs(d1.angle - real_d2_angle)/d1.angle
-
-    #im były do siebie podobniejsze, tym większe będą te wartości
-    left_arm_perc = 100-left_arm_ratio
-    right_arm_perc = 100-right_arm_ratio
-    angle_perc = 100-angle_ratio
+    angle_ratio = (abs(d1.angle - real_d2_angle)/d1.angle)*100
 
     #zwraca to co wyżej tylko przemnożone przez tamte wagi
-    return left_arm_perc * arm_wage + right_arm_perc * arm_wage + angle_perc * angle_wage
+    return left_arm_ratio * arm_wage + right_arm_ratio * arm_wage + angle_ratio * angle_wage
 
 #to zwraca zestaw "dwójkątów" dla jednego zdjęcia
 def one_photo_diangles(photo):
