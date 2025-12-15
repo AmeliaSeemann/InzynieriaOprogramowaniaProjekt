@@ -1,7 +1,7 @@
 #Ten plik odpowiada wyłącznie za zdefiniowanie Diangle'ów oraz
 #funkcje potrzebne do ich stworzenia lub porównywania.
 #Funkcje porównujące faktycznie zdjęcia mają być w matching.py.
-from photos_opencv import detect_edge_features, open_photo
+from photos_opencv import detect_edge_features, open_photo, get_contours, extract_mask_and_contour
 import cv2 as cv
 #diangle - "dwójkąt" (słowo zmyślone) [powinny się nazwyać "jednokątami" bo mają tylko jeden kąt ale cicho...]
 #opisuje trzy punkty, dwie łączące je krawędzie i kąt między nimi
@@ -50,22 +50,53 @@ def diangles_difference(d1, d2):
     arm_wage = (1-angle_wage)/2
 
     #różnice względne między ramionami
-    #trzeba będzie dopracować czy jakoś ich nie odwracać miejscami?
-    left_arm_ratio = (abs(d1.left_arm - d2.left_arm)/d1.left_arm)*100
-    right_arm_ratio = (abs(d1.right_arm - d2.right_arm)/d1.right_arm)*100
+    left_arm_ratio = (abs(d1.left_arm - d2.right_arm)/d1.left_arm)*100
+    right_arm_ratio = (abs(d1.right_arm - d2.left_arm)/d1.right_arm)*100
 
     #różnica względna między kątami
-    #jeden jest wypukły a drugi wklęsły, więc dlatego "odwracamy" tu ten drugi
     real_d2_angle = d2.angle
     angle_ratio = (abs(d1.angle - real_d2_angle)/d1.angle)*100
 
     #zwraca to co wyżej tylko przemnożone przez tamte wagi
     return left_arm_ratio * arm_wage + right_arm_ratio * arm_wage + angle_ratio * angle_wage
 
+
+# Sortuje punkty z features, żeby punkty dwójkątów były obok siebie
+def sort_features_for_diangles(features, photo):
+
+        #potrzebne listy, bierze kontur ze zdjęcia
+        sorted_features = []
+        contour = extract_mask_and_contour(photo)[1]
+        all_points = []
+
+        #wszystkie punkty z konturu
+        for i in range(len(contour)):
+            x=(contour[i][0][0])
+            y=(contour[i][0][1])
+            all_points.append((x,y))
+
+        #wybrane punkty z konturu
+        selected_points = []
+        for i in range(len(features)):
+            selected_points.append(features[i]['point'])
+
+        #sortuje wybrane punkty na podstawie położenia ich w całym konturze
+        for p in all_points:
+            if p in selected_points:
+                sorted_features.append(features[selected_points.index(p)])
+
+        #zwraca tak posortowaną listę cech
+        return sorted_features
+
+
 #to zwraca zestaw "dwójkątów" dla jednego zdjęcia
 def one_photo_diangles(photo):
     some_diangles = []
-    features = detect_edge_features(open_photo(photo))[0]
+    features_bad = detect_edge_features(open_photo(photo))[0]
+
+    #tu sobie sortuje cechy, aby diangle miały sens
+    features = sort_features_for_diangles(features_bad, photo)
+
     #łączy punkty od [1] do przedostatniego w dwójkąty po trzy punkty
     for i in range(1,len(features)-1):
         center_coords = list(features[i]["point"])
@@ -102,3 +133,4 @@ def all_photos_diangles(photos):
         #ale nic nie stoi na przeszkodzie by zrobić z tego jakiś słownik potem
         all_diangles.append(one_photo_diangles(photo))
     return all_diangles
+

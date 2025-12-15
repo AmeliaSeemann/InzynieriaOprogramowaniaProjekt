@@ -225,8 +225,10 @@ class MainWindow(QMainWindow):
         #     print(match)
 
         #wywołuje na razie eksperymentalną funkcję z pliku matching.py
+
         matches = true_match_all_photos(self.photos_list)
         draw_matches(matches,self.photos_list)
+
 
         #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
         #(na razie spreparowany plik)

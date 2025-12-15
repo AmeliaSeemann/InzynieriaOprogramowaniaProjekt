@@ -71,10 +71,15 @@ def true_match_all_photos(photos):
         return None
 
 
+#do rysowania pojedyńczego diangla
 def draw_diangle(photo,diangle):
+    #lewe ramie
     img1 = cv.line(photo,(diangle.x,diangle.y),(diangle.xl,diangle.yl),(255,0,0),5)
+    #nakłada jeszcze prawe ramie
     img2 = cv.line(img1, (diangle.x, diangle.y), (diangle.xr, diangle.yr), (0, 255, 0), 5)
+    #nakłada środek
     img3 = cv.circle(img2,(diangle.x,diangle.y),5,(0,0,255),-1)
+    #zwraca obraz z rysunkiem
     return img3
 
 #ma rysować Point1 na Photo1
@@ -83,6 +88,7 @@ def draw_diangle(photo,diangle):
 def draw_matches(matches,photos):
     n=10 #ile "najlepszych" dopasowań chcemy pokazać
     print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
+    print(matches[:n])
     for i in range(n):
         #rysuje Point1 na Photo1
         photo1 = open_photo(photos[matches[i]['Photo1']])
