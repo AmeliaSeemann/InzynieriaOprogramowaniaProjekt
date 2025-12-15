@@ -67,7 +67,7 @@ def true_match_all_photos(photos):
 
     #to tak na wszelki wypadek bo wcześniej było parę problemów
     except Exception as e:
-        print(e)
+        print("Ups:",e)
         return None
 
 
@@ -86,7 +86,7 @@ def draw_diangle(photo,diangle):
 #rysować Point2 na Photo2
 #jakoś połączyć te dwa zdjęcia i pokazać czy match ma wogóle sens
 def draw_matches(matches,photos):
-    n=10 #ile "najlepszych" dopasowań chcemy pokazać
+    n=40 #ile "najlepszych" dopasowań chcemy pokazać
     print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
     print(matches[:n])
     for i in range(n):

@@ -49,9 +49,19 @@ def diangles_difference(d1, d2):
     angle_wage = 0.33
     arm_wage = (1-angle_wage)/2
 
+    #zabezpieczenie przed dzieleniem przez 0
+    if d1.left_arm==0:
+        d1.left_arm=0.001
+    if d1.right_arm==0:
+        d1.right_arm=0.001
+
     #różnice względne między ramionami
     left_arm_ratio = (abs(d1.left_arm - d2.right_arm)/d1.left_arm)*100
     right_arm_ratio = (abs(d1.right_arm - d2.left_arm)/d1.right_arm)*100
+
+    #zabezpieczenie przed dzieleniem przez 0
+    if d1.angle==0:
+        d1.angle=180
 
     #różnica względna między kątami
     real_d2_angle = d2.angle
