@@ -50,6 +50,8 @@ def true_match_all_photos(photos):
                             single_match["Point2"] = [d2.x, d2.y]
                             single_match["Photo1"] = current_photo
                             single_match["Photo2"] = i
+                            single_match["diangle1"] = d1
+                            single_match["diangle2"] = d2
                             matches.append(single_match)
                 current_diangle += 1
             current_photo += 1
@@ -69,25 +71,31 @@ def true_match_all_photos(photos):
         return None
 
 
+def draw_diangle(photo,diangle):
+    img1 = cv.line(photo,(diangle.x,diangle.y),(diangle.xl,diangle.yl),(255,0,0),5)
+    img2 = cv.line(img1, (diangle.x, diangle.y), (diangle.xr, diangle.yr), (0, 255, 0), 5)
+    img3 = cv.circle(img2,(diangle.x,diangle.y),5,(0,0,255),-1)
+    return img3
+
 #ma rysować Point1 na Photo1
 #rysować Point2 na Photo2
 #jakoś połączyć te dwa zdjęcia i pokazać czy match ma wogóle sens
 def draw_matches(matches,photos):
     n=10 #ile "najlepszych" dopasowań chcemy pokazać
-    print("Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
+    print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
     for i in range(n):
         #rysuje Point1 na Photo1
         photo1 = open_photo(photos[matches[i]['Photo1']])
-        coords_1 = matches[i]["Point1"]
-        img1 = cv.circle(photo1,(coords_1[0],coords_1[1]),5,(255,255,255),-1)
+        diangle1 = matches[i]['diangle1']
+        left_image = draw_diangle(photo1,diangle1)
 
         # rysuje Point2 na Photo2
         photo2 = open_photo(photos[matches[i]['Photo2']])
-        coords_2 = matches[i]["Point2"]
-        img2 = cv.circle(photo2, (coords_2[0], coords_2[1]), 5, (255, 255, 255), -1)
+        diangle2 = matches[i]['diangle2']
+        right_image = draw_diangle(photo2,diangle2)
 
         #łączy dwa zdjęcia ze sobą
-        vis = np.concatenate((img1, img2), axis=1)
+        vis = np.concatenate((left_image, right_image), axis=1)
 
 
         #wizualizuje dopasowanie

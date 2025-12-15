@@ -2,7 +2,7 @@
 #funkcje potrzebne do ich stworzenia lub porównywania.
 #Funkcje porównujące faktycznie zdjęcia mają być w matching.py.
 from photos_opencv import detect_edge_features, open_photo
-
+import cv2 as cv
 #diangle - "dwójkąt" (słowo zmyślone) [powinny się nazwyać "jednokątami" bo mają tylko jeden kąt ale cicho...]
 #opisuje trzy punkty, dwie łączące je krawędzie i kąt między nimi
 #na ich podstawie będziemy dopasowywać ze sobą zdjęcia, chyba...
@@ -28,6 +28,7 @@ class Diangle:
             s+=f"Angle: {self.angle}\n"
             s+="-------------"
             return s
+
 
     #jakieś tam do liczenia dystansu
     @staticmethod
