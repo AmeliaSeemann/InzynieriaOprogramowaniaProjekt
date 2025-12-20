@@ -8,7 +8,7 @@ import cv2 as cv
 #na ich podstawie będziemy dopasowywać ze sobą zdjęcia, chyba...
 class Diangle:
     #typowy konstruktor, nie trzeba się nim martwić
-    def __init__(self,center_coords,left_coords,right_coords,angle):
+    def __init__(self,center_coords,left_coords,right_coords,angle,type):
         self.x=center_coords[0]
         self.y=center_coords[1]
         self.xl=left_coords[0]
@@ -16,6 +16,7 @@ class Diangle:
         self.xr=right_coords[0]
         self.yr=right_coords[1]
         self.angle=angle
+        self.type=type
         self.left_arm = self.distance(self.x,self.y,self.xl,self.yl)
         self.right_arm = self.distance(self.x,self.y,self.xr,self.yr)
 
@@ -42,6 +43,10 @@ class Diangle:
 #do sprawdzania na ile dwa "dwójkąty" są od siebie różne
 #czyli im MNIEJSZĄ liczbę zwraca, tym są podobniejsze
 def diangles_difference(d1, d2):
+
+    #jak oba są wypukłe, albo oba wklęsłe, to nawet nie bierze ich pod uwagę
+    if d1.type==d2.type:
+        return 9999
 
     #wagi tego, jak dużo znaczą podobieństwa kąta i podobieństwa ramienia
     #na razie wszystko jest ustawione na tyle samo
@@ -109,11 +114,12 @@ def one_photo_diangles(photo):
 
     #łączy punkty od [1] do przedostatniego w dwójkąty po trzy punkty
     for i in range(1,len(features)-1):
+        type = features[i]["type"]
         center_coords = list(features[i]["point"])
         left_coords = list(features[i-1]["point"])
         right_coords = list(features[i + 1]["point"])
         angle = features[i]["angle_deg"]
-        new_diangle = Diangle(center_coords,left_coords,right_coords,angle)
+        new_diangle = Diangle(center_coords,left_coords,right_coords,angle,type)
         some_diangles.append(new_diangle)
     #tu jeszcze łączy dwie ostatnei kropki z pierwszą
     last = features[-1]
@@ -123,7 +129,8 @@ def one_photo_diangles(photo):
     left_coords = list(previous_to_last["point"])
     right_coords = list(first["point"])
     angle = last["angle_deg"]
-    some_diangles.append(Diangle(center_coords,left_coords,right_coords,angle))
+    type = last["type"]
+    some_diangles.append(Diangle(center_coords,left_coords,right_coords,angle,type))
 
     #tu jeszcze łączy dwie pierwsze kropki z ostatnią
     second = features[1]
@@ -131,7 +138,8 @@ def one_photo_diangles(photo):
     left_coords = list(last["point"])
     right_coords = list(second["point"])
     angle = first["angle_deg"]
-    some_diangles.append(Diangle(center_coords, left_coords, right_coords, angle))
+    type = first["type"]
+    some_diangles.append(Diangle(center_coords, left_coords, right_coords, angle,type))
 
     return some_diangles
 
