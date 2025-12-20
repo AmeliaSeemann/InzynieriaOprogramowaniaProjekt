@@ -1,10 +1,13 @@
 #Tu mają być funkcje, które dostają zdjęcia jako argumenty, tworzą im
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
+import math
 
 from Diangle import all_photos_diangles,diangles_difference
 from photos_opencv import open_photo
 import cv2 as cv
 import numpy as np
+from sympy import symbols, Eq, solve
+from scipy import ndimage
 
 
 #AKTUALNE PROBLEMY: na bank dopasowuje kąty proste i półproste jako ~idealne~,
@@ -100,11 +103,67 @@ def draw_matches(matches,photos):
         diangle2 = matches[i]['diangle2']
         right_image = draw_diangle(photo2,diangle2)
 
+        #oblicza, o ile stopni trzeba obrócić drugie zdjęcie
+        degrees = rotate_match(diangle1, diangle2)
+        cv.imshow("Match",right_image)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+        right_image = ndimage.rotate(right_image, degrees,reshape=False)
+        cv.imshow("Match",right_image)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+
         #łączy dwa zdjęcia ze sobą
-        vis = np.concatenate((left_image, right_image), axis=1)
+        try:
+            vis = np.concatenate((left_image, right_image), axis=1)
+        except Exception as e:
+            print(e)
 
 
         #wizualizuje dopasowanie
         cv.imshow("Match",vis)
+
         cv.waitKey(0)
         cv.destroyAllWindows()
+
+
+def rotate_match(d1,d2):
+    a1,b1=symbols('a1,b1')
+    eq1_l = Eq((a1 * d1.xl + b1), d1.yl)
+    eq1_r = Eq((a1 * d1.xr + b1), d1.yr)
+    sol1 = solve((eq1_l, eq1_r), (a1, b1))
+    print(f"l1: y={sol1[a1]}x+{sol1[b1]}")
+    b1_up = d1.y - (1 / sol1[a1]) * d1.x
+    a1_up = 1/sol1[a1]
+    x1_hit = -1*b1_up/a1_up
+    c_bok = (d1.y**2+(d1.x-x1_hit)**2)**0.5
+    print(f"l2: y={a1_up}x+{b1_up}")
+    ratio1 = d1.y/c_bok
+    alpha=np.arccos(np.float64(ratio1))
+    print("alpha:",math.degrees(alpha))
+
+
+    print("\n")
+
+    a2, b2 = symbols('a2,b2')
+    eq2_l = Eq((a2 * d2.xl + b2), d2.yl)
+    eq2_r = Eq((a2 * d2.xr + b2), d2.yr)
+    sol2 = solve((eq2_l, eq2_r), (a2, b2))
+    print(f"l1: y={sol2[a2]}x+{sol2[b2]}")
+    b2_up = d2.y - (1 / sol2[a2]) * d2.x
+    a2_up = 1/sol2[a2]
+    x2_hit = -1 * b2_up / a2_up
+    c_bok = (d2.y**2+(d2.x-x2_hit)**2)**0.5
+    ratio2 = d2.y/c_bok
+
+    print(f"l2: y={a2_up}x+{b2_up}")
+    beta = np.arccos(np.float64(ratio2))
+    print("beta:",math.degrees(beta))
+
+    difference = math.degrees(alpha-beta)
+    print("\nDifference:",difference)
+    return difference
+
+
+
