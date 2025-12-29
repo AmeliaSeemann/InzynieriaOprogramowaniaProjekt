@@ -129,15 +129,16 @@ def draw_matches(matches,photos):
         #tamta funkcja zwraca dwa kąty, trzeba to będzie przetestować dla obu
         #to drugie zdjęcie będzie też mogło zmienić swój rozmiar abyśmy przy obróceniu
         #nie stracili żadnych informacji
-        #tymczasowo zostawiamy to tak
+        #tymczasowo zostawiamy to tak:
+
         angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
-        rotated_right_image1 = right_image #dla pierwszego kątu
-        rotated_right_image2 = right_image #dla drugiego kątu
+        rotated_right_image1 = right_image #dla angle1 będzie
+        rotated_right_image2 = right_image #dla angle2 będzie
 
         # obliczanie o ile trzeba przesunąć to prawe zdjęcie, jak będzie już obrócone
         x,y = calculate_vector(left_image,rotated_right_image1)
         print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
-        #te przesunięcia trzeba będzie zrobić dla obu przypadków
+        #te przesunięcia trzeba będzie zrobić dla obu przypadków obrócenia
         #potem trzeba rozkminić jakoś jak zrobić te zdjęcia przezroczystymi i nałożyć
         #siebie czy coś
 
@@ -145,7 +146,7 @@ def draw_matches(matches,photos):
         #(czyli zdjęcia się mniej nałożyły czyli lepiej pasowały)
         #to będzie ten dobry przypadek obrócenia, drugi się odrzuci
 
-        #wizualizuje dopasowanie (ale jeszcze nie tych obróconych zdjęć)
+        #tu wizualizuje dopasowanie (ale jeszcze nie tych obróconych zdjęć)
         #(w przyszłości się tu zwizualizuje ten dobry przypadek obrócenia i przeniesienia)
         cv.imshow("Jestem zdjęciem",vis)
         cv.waitKey(0)
@@ -153,11 +154,12 @@ def draw_matches(matches,photos):
 
 
 
-#oblicza, o ile stopni ma się obrócić drugie zdjęcie
+#oblicza, o ile stopni ma się obrócić drugie zdjęcie, na podstawie ich dianglów
 def calculate_rotation_degree(d1,d2):
 
-    # to się dzieje na bazie jakiejś matematyki której na ten moment nie kumam
-    # ale ostatecznie zwraca sensowne wyniki
+    # to się dzieje na bazie jakiejś matematyki której na ten moment już nie kumam
+    # ale ostatecznie zwraca sensowne wyniki, kiedyś to było dla mnie zrozumiałe,
+    # teraz nieco mniej
 
 
     #tu liczy jakieś równanie prostej łączącej lewy i prawy wierzchołek diangla
@@ -196,6 +198,10 @@ def calculate_rotation_degree(d1,d2):
     else:
         beta = np.degrees(np.arccos(np.float64(ratio2)))
 
+
+    #PROBLEM: czasem pasuje kąt difference, a czasem difference+180
+    #Nie wiem na jakiej podstawie wybiera się ten właściwy
+    #Bierzemy więc dwa i potem w draw_matches() się wybierze lepszy, jakoś
 
     #różnica między kątem obu zdjęć
     difference = alpha-beta

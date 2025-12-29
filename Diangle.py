@@ -37,11 +37,7 @@ class Diangle:
         return (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
 
 
-#AKTUALNE PROBLEMY: nie wiem, czy nie trzeba amieniać czasem ramion miejscami
-#ani czy to odejmowanie drugiego kątu od 180 jest serio dobrym pomysłem
-
-#do sprawdzania na ile dwa "dwójkąty" są od siebie różne
-#czyli im MNIEJSZĄ liczbę zwraca, tym są podobniejsze
+#AKTUALNE PROBLEMY: chyba brak?
 def diangles_difference(d1, d2):
 
     #jak oba są wypukłe, albo oba wklęsłe, to nawet nie bierze ich pod uwagę
@@ -121,6 +117,7 @@ def one_photo_diangles(photo):
         angle = features[i]["angle_deg"]
         new_diangle = Diangle(center_coords,left_coords,right_coords,angle,type)
         some_diangles.append(new_diangle)
+
     #tu jeszcze łączy dwie ostatnei kropki z pierwszą
     last = features[-1]
     previous_to_last = features[-2]
