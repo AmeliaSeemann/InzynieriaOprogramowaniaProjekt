@@ -10,7 +10,9 @@ from scipy import ndimage
 
 
 
-#AKTUALNE PROBLEMY: poczytaj sobie w draw_matches() i calculate_rotation_angle()
+#AKTUALNE PROBLEMY: funkcja join_photos() działą neistety TYLKO jak zdjęcia mają
+#                   ten sam rozmiar
+# No i większość matchy jest słaba, w pierwszych 10 jest może jeden czy 2 dwa dobre
 
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
@@ -98,55 +100,76 @@ def draw_matches(matches,photos):
     print(matches[:n])
 
     for i in range(n):
-        #rysuje Point1 na Photo1
+        #rysuje dinagle1 na photo1 (do wizualizacji nie połączonych zdjęć)
         photo1 = open_photo(photos[matches[i]['Photo1']])
         diangle1 = matches[i]['diangle1']
-
-        # te zdjecie do pokazania
         left_image_vis = draw_diangle(photo1.copy(),diangle1)
 
-        # te do realnych działań za kulisami
+        # rysuje diangle2 na photo2 (do wizualizacji nie połączonych zdjęć)
+        photo2 = open_photo(photos[matches[i]['Photo2']])
+        diangle2 = matches[i]['diangle2']
+        right_image_vis = draw_diangle(photo2.copy(),diangle2)
+
+        # to do wizualizacji połączonych zdjęć:
         left_image = cv.cvtColor(photo1, cv.COLOR_BGR2GRAY)
         left_image = cv.cvtColor(left_image, cv.COLOR_GRAY2BGR)
         left_image = draw_dot(left_image,diangle1.x,diangle1.y)
-
-
-        # rysuje Point2 na Photo2
-        photo2 = open_photo(photos[matches[i]['Photo2']])
-        diangle2 = matches[i]['diangle2']
-
-        #te zdjecie do pokazania
-        right_image_vis = draw_diangle(photo2.copy(),diangle2)
-
-        #te do realnych działań za kulisami
         right_image = cv.cvtColor(photo2, cv.COLOR_BGR2GRAY)
         right_image = cv.cvtColor(right_image, cv.COLOR_GRAY2BGR)
         right_image = draw_dot(right_image, diangle2.x, diangle2.y)
+
+        #oblicza dwa możliwe kąty obrotu, potem sięwybiera właściwy
         angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
-        rotated_right_image =  ndimage.rotate(right_image, angle1,reshape=False)
 
 
+        #obracanie prawego zdjęcia o kąt angle1
+        rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=False)
+
+        #oblicza odległość między punktami dopasowania
+        x,y = calculate_vector(left_image,rotated_right_image1)
+        # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
+
+        # łączy dwa zdjęcia join_photos
+        photo2_a1 = ndimage.rotate(photo2, angle1,reshape=False)
+        version1 = join_photos(photo1,photo2_a1,x,y)
+
+        #oblicza ile jest "tła" ma tym złączonym zdjęciu
+        gray1 = cv.cvtColor(version1, cv.COLOR_BGR2GRAY)
+        count1 = cv.countNonZero(gray1)
 
 
-        # obliczanie o ile trzeba przesunąć to prawe zdjęcie, jak będzie już obrócone
-        x,y = calculate_vector(left_image,rotated_right_image)
-        print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
-        #te przesunięcia trzeba będzie zrobić dla obu przypadków obrócenia
-        #potem trzeba rozkminić jakoś jak zrobić te zdjęcia przezroczystymi i nałożyć
-        #siebie czy coś
+        # obracanie prawego zdjęcia o kąt angle2
+        rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=False)
+        x,y = calculate_vector(left_image,rotated_right_image2)
+        # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
 
-        #łączy dwa zdjęcia (te do wizualizacji dla nas)
-        right_image_vis = ndimage.rotate(right_image_vis, angle1,reshape=False)
+        # łączy dwa zdjęcia join_photos
+        photo2_a2 = ndimage.rotate(photo2, angle2,reshape=False)
+        version2 = join_photos(photo1,photo2_a2,x,y)
+
+        # oblicza ile jest "tła" ma tym złączonym zdjęciu
+        gray2 = cv.cvtColor(version2, cv.COLOR_BGR2GRAY)
+        count2 = cv.countNonZero(gray2)
+
+        # te zdjęcie, które ma mniej "tła" jest tą właściwą wersją
+        # (bo mniej tła -> mniej się nałożyły -> bardziej pasują)
+        if count1>count2:
+            cv.imshow("Connected",version1)
+            true_angle = angle1
+        else:
+            cv.imshow("Connected",version2)
+            true_angle = angle2
+
+        # no i pokazujemy tą właściwą wersję połączonych fragmentó
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+
+        #a tu pokazuje te nie połączone fragmenty
+        #razem z kolorowymi oznaczeniami
+        right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=False)
         vis = np.concatenate((left_image_vis, right_image_vis), axis=1)
-
-
-        #tu już korzystamy z tych zdjęć w których nic nie zmieniono (tylko obrócono 2)
-        photo2 = ndimage.rotate(photo2, angle1,reshape=False)
-        join_photos(photo1,photo2,x,y)
-
-        #tu wizualizuje dopasowanie (ale jeszcze nie tych obróconych zdjęć)
-        #(w przyszłości się tu zwizualizuje ten dobry przypadek obrócenia i przeniesienia)
-        cv.imshow("Jestem zdjęciem",vis)
+        cv.imshow("Not connected",vis)
         cv.waitKey(0)
         cv.destroyAllWindows()
 
@@ -201,16 +224,16 @@ def calculate_rotation_degree(d1,d2):
 
     #PROBLEM: czasem pasuje kąt difference, a czasem difference+180
     #Nie wiem na jakiej podstawie wybiera się ten właściwy
-    #Bierzemy więc dwa i potem w draw_matches() się wybierze lepszy, jakoś
+    #Bierzemy więc dwa i potem w draw_matches() się wybiera ten lepszy
 
     #różnica między kątem obu zdjęć
-    difference = alpha-beta
+    difference = -(alpha-beta)
 
     #druga potencjalna różnica między kątem obu zdjęć
     difference2 = difference + 180
 
     #zwraca obie, potem się jakoś sprawdzi która jest lepsza
-    return -difference,difference2
+    return difference,difference2
 
 
 # do policzenia o ile trzeba przesunąć prawe zdjęcie względem lewego
@@ -248,24 +271,26 @@ def calculate_vector(p1,p2):
     # zwraca tą informację
     return width_difference,height_difference
 
-
+#do łączenia dwóch zdjęć
+#na razie działa TYLKO gdy mają ten sam rozmiar
 def join_photos(p1,p2,x,y):
+    #to się potem zmieni
     p2_height = p2.shape[0]
     p2_width = p2.shape[1]
 
+    #buduje takie duże puste zdjęcie w którym zmieszczą sięoba zdjecia po przesunięciu
     full_width = 4*p2_width
     full_height = 3*p2_height
-
     image = np.zeros((full_height,full_width,4), np.uint8)
 
+    #wrzuca pierwsze zdjęcie na właściwie miejsce
     image[p2_height:p2_height * 2, p2_width :p2_width * 2] = p1
-    image[p2_height:p2_height * 2, p2_width*2 :p2_width * 3] = p2
 
+    #wrzuca drugie zdjęcie przesunięte o wektor
     for i in range(p2_height,p2_height*2):
         for j in range(p2_width*2,p2_width*3):
             if p2[i-p2_height,j-p2_width*2][3]!=0:
                 image[i-y,j+x]=p2[i-p2_height,j-p2_width*2]
 
-    cv.imshow("Image",image)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    #zwraca całe zdjęcie
+    return image
