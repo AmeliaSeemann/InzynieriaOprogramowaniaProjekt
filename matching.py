@@ -6,6 +6,8 @@ from photos_opencv import open_photo
 import cv2 as cv
 import numpy as np
 from sympy import symbols, Eq, solve
+from scipy import ndimage
+
 
 
 #AKTUALNE PROBLEMY: poczytaj sobie w draw_matches() i calculate_rotation_angle()
@@ -120,37 +122,35 @@ def draw_matches(matches,photos):
         right_image = cv.cvtColor(photo2, cv.COLOR_BGR2GRAY)
         right_image = cv.cvtColor(right_image, cv.COLOR_GRAY2BGR)
         right_image = draw_dot(right_image, diangle2.x, diangle2.y)
-
-        #łączy dwa zdjęcia (te do wizualizacji dla nas)
-        vis = np.concatenate((left_image_vis, right_image_vis), axis=1)
-
-        #tu będzie obracanie prawego zdjęcia
-        #trzeba będzie to zrobić na bazie calculate_rotation_degree()
-        #tamta funkcja zwraca dwa kąty, trzeba to będzie przetestować dla obu
-        #to drugie zdjęcie będzie też mogło zmienić swój rozmiar abyśmy przy obróceniu
-        #nie stracili żadnych informacji
-        #tymczasowo zostawiamy to tak:
-
         angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
-        rotated_right_image1 = right_image #dla angle1 będzie
-        rotated_right_image2 = right_image #dla angle2 będzie
+        rotated_right_image =  ndimage.rotate(right_image, angle1,reshape=False)
+
+
+
 
         # obliczanie o ile trzeba przesunąć to prawe zdjęcie, jak będzie już obrócone
-        x,y = calculate_vector(left_image,rotated_right_image1)
+        x,y = calculate_vector(left_image,rotated_right_image)
         print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
         #te przesunięcia trzeba będzie zrobić dla obu przypadków obrócenia
         #potem trzeba rozkminić jakoś jak zrobić te zdjęcia przezroczystymi i nałożyć
         #siebie czy coś
 
-        #potem się sprawdzi dla którego przypadku po przesunięciu stracono mniej tła
-        #(czyli zdjęcia się mniej nałożyły czyli lepiej pasowały)
-        #to będzie ten dobry przypadek obrócenia, drugi się odrzuci
+        #łączy dwa zdjęcia (te do wizualizacji dla nas)
+        right_image_vis = ndimage.rotate(right_image_vis, angle1,reshape=False)
+        vis = np.concatenate((left_image_vis, right_image_vis), axis=1)
+
+
+        #tu już korzystamy z tych zdjęć w których nic nie zmieniono (tylko obrócono 2)
+        photo2 = ndimage.rotate(photo2, angle1,reshape=False)
+        join_photos(photo1,photo2,x,y)
 
         #tu wizualizuje dopasowanie (ale jeszcze nie tych obróconych zdjęć)
         #(w przyszłości się tu zwizualizuje ten dobry przypadek obrócenia i przeniesienia)
         cv.imshow("Jestem zdjęciem",vis)
         cv.waitKey(0)
         cv.destroyAllWindows()
+
+
 
 
 
@@ -177,8 +177,8 @@ def calculate_rotation_degree(d1,d2):
     x1_hit = -1*b1_up/a1_up
     c_bok = (d1.y ** 2 + (d1.x - x1_hit) ** 2) ** 0.5
     ratio1 = d1.y / c_bok
-    if d1.x-x1_hit<0:
-        alpha = 180-np.degrees(np.arccos(np.float64(ratio1)))
+    if d1.x - x1_hit < 0:
+        alpha = 180 - np.degrees(np.arccos(np.float64(ratio1)))
     else:
         alpha = np.degrees(np.arccos(np.float64(ratio1)))
 
@@ -193,8 +193,8 @@ def calculate_rotation_degree(d1,d2):
     x2_hit = -1 * b2_up / a2_up
     c_bok = (d2.y**2+(d2.x-x2_hit)**2)**0.5
     ratio2 = d2.y/c_bok
-    if d2.x-x2_hit<0:
-        beta = 180-np.degrees(np.arccos(np.float64(ratio2)))
+    if d2.x - x2_hit < 0:
+        beta = 180 - np.degrees(np.arccos(np.float64(ratio2)))
     else:
         beta = np.degrees(np.arccos(np.float64(ratio2)))
 
@@ -210,7 +210,7 @@ def calculate_rotation_degree(d1,d2):
     difference2 = difference + 180
 
     #zwraca obie, potem się jakoś sprawdzi która jest lepsza
-    return difference,difference2
+    return -difference,difference2
 
 
 # do policzenia o ile trzeba przesunąć prawe zdjęcie względem lewego
@@ -248,3 +248,24 @@ def calculate_vector(p1,p2):
     # zwraca tą informację
     return width_difference,height_difference
 
+
+def join_photos(p1,p2,x,y):
+    p2_height = p2.shape[0]
+    p2_width = p2.shape[1]
+
+    full_width = 4*p2_width
+    full_height = 3*p2_height
+
+    image = np.zeros((full_height,full_width,4), np.uint8)
+
+    image[p2_height:p2_height * 2, p2_width :p2_width * 2] = p1
+    image[p2_height:p2_height * 2, p2_width*2 :p2_width * 3] = p2
+
+    for i in range(p2_height,p2_height*2):
+        for j in range(p2_width*2,p2_width*3):
+            if p2[i-p2_height,j-p2_width*2][3]!=0:
+                image[i-y,j+x]=p2[i-p2_height,j-p2_width*2]
+
+    cv.imshow("Image",image)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
