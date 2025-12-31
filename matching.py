@@ -10,9 +10,7 @@ from scipy import ndimage
 
 
 
-#AKTUALNE PROBLEMY: funkcja join_photos() działą neistety TYLKO jak zdjęcia mają
-#                   ten sam rozmiar
-# No i większość matchy jest słaba, w pierwszych 10 jest może jeden czy 2 dwa dobre
+#AKTUALNE PROBLEMY:  większość matchy jest słaba, w pierwszych 10 jest może jeden czy 2 dwa dobre
 
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
@@ -100,13 +98,18 @@ def draw_matches(matches,photos):
     print(matches[:n])
 
     for i in range(n):
-        #rysuje dinagle1 na photo1 (do wizualizacji nie połączonych zdjęć)
+        # otwiera zdjęcia z tego dopasowania
         photo1 = open_photo(photos[matches[i]['Photo1']])
+        photo2 = open_photo(photos[matches[i]['Photo2']])
+
+        # dostosowuje rozmiary zdjęć by były równe
+        photo1,photo2 = adjust_photos(photo1,photo2)
+
+        #rysuje dinagle1 na photo1 (do wizualizacji nie połączonych zdjęć)
         diangle1 = matches[i]['diangle1']
         left_image_vis = draw_diangle(photo1.copy(),diangle1)
 
         # rysuje diangle2 na photo2 (do wizualizacji nie połączonych zdjęć)
-        photo2 = open_photo(photos[matches[i]['Photo2']])
         diangle2 = matches[i]['diangle2']
         right_image_vis = draw_diangle(photo2.copy(),diangle2)
 
@@ -173,8 +176,33 @@ def draw_matches(matches,photos):
         cv.waitKey(0)
         cv.destroyAllWindows()
 
+# z racji, że join_photos() działa tylko dla zdjęć tego samego rozmiaru
+# to tu je ustawiamy by miały taki sam rozmiar
+# jeżeli jakimś cudem już są tego samego rozmiaru, to nic się z nimi nie dzieje
+def adjust_photos(p1,p2):
 
+    #pobiera kształty zdjęć
+    h1,w1 = p1.shape[:2]
+    h2,w2 = p2.shape[:2]
 
+    #takie same rozmiary - nic się nie dzieje
+    if h1 == h2 and w1 == w2:
+        return p1,p2
+
+    #bierze maksymalne rozmiary
+    h_max = max(h1,h2)
+    w_max = max(w1,w2)
+
+    #tworzy dwa puste zdjęcia o maksymalnych wymiarach
+    im1 = np.zeros((h_max, w_max, 4), np.uint8)
+    im2 = np.zeros((h_max, w_max, 4), np.uint8)
+
+    #wsadza do nich te mniejsze
+    im1[:h1,:w1,:] = p1
+    im2[:h2,:w2,:] = p2
+
+    print("Zostałem dobrze wykorzystany :3")
+    return im1,im2
 
 
 #oblicza, o ile stopni ma się obrócić drugie zdjęcie, na podstawie ich dianglów
@@ -272,7 +300,6 @@ def calculate_vector(p1,p2):
     return width_difference,height_difference
 
 #do łączenia dwóch zdjęć
-#na razie działa TYLKO gdy mają ten sam rozmiar
 def join_photos(p1,p2,x,y):
     #to się potem zmieni
     p2_height = p2.shape[0]
