@@ -10,7 +10,7 @@ from scipy import ndimage
 
 
 
-#AKTUALNE PROBLEMY:  większość matchy jest słaba, w pierwszych 10 jest może jeden czy 2 dwa dobre
+#AKTUALNE PROBLEMY: dziwne dopasowania, optymalizacja (a raczej jej brak)
 
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
@@ -124,17 +124,18 @@ def draw_matches(matches,photos):
         #oblicza dwa możliwe kąty obrotu, potem sięwybiera właściwy
         angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
 
-
         #obracanie prawego zdjęcia o kąt angle1
-        rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=False)
+        rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=True)
 
         #oblicza odległość między punktami dopasowania
-        x,y = calculate_vector(left_image,rotated_right_image1)
+        im1,im2 = adjust_photos(left_image,rotated_right_image1)
+        x,y = calculate_vector(im1,im2)
         # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
 
         # łączy dwa zdjęcia join_photos
-        photo2_a1 = ndimage.rotate(photo2, angle1,reshape=False)
-        version1 = join_photos(photo1,photo2_a1,x,y)
+        photo2_a1 = ndimage.rotate(photo2, angle1,reshape=True)
+        im1,im2 = adjust_photos(photo1,photo2_a1)
+        version1 = join_photos(im1,im2,x,y)
 
         #oblicza ile jest "tła" ma tym złączonym zdjęciu
         gray1 = cv.cvtColor(version1, cv.COLOR_BGR2GRAY)
@@ -142,13 +143,15 @@ def draw_matches(matches,photos):
 
 
         # obracanie prawego zdjęcia o kąt angle2
-        rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=False)
-        x,y = calculate_vector(left_image,rotated_right_image2)
+        rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=True)
+        im1,im2 = adjust_photos(left_image,rotated_right_image2)
+        x,y = calculate_vector(im1,im2)
         # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
 
         # łączy dwa zdjęcia join_photos
-        photo2_a2 = ndimage.rotate(photo2, angle2,reshape=False)
-        version2 = join_photos(photo1,photo2_a2,x,y)
+        photo2_a2 = ndimage.rotate(photo2, angle2,reshape=True)
+        im1,im2 = adjust_photos(photo1,photo2_a2)
+        version2 = join_photos(im1,im2,x,y)
 
         # oblicza ile jest "tła" ma tym złączonym zdjęciu
         gray2 = cv.cvtColor(version2, cv.COLOR_BGR2GRAY)
@@ -170,8 +173,9 @@ def draw_matches(matches,photos):
 
         #a tu pokazuje te nie połączone fragmenty
         #razem z kolorowymi oznaczeniami
-        right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=False)
-        vis = np.concatenate((left_image_vis, right_image_vis), axis=1)
+        right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=True)
+        im1,im2 = adjust_photos(left_image_vis,right_image_vis)
+        vis = np.concatenate((im1,im2), axis=1)
         cv.imshow("Not connected",vis)
         cv.waitKey(0)
         cv.destroyAllWindows()
@@ -180,6 +184,7 @@ def draw_matches(matches,photos):
 # to tu je ustawiamy by miały taki sam rozmiar
 # jeżeli jakimś cudem już są tego samego rozmiaru, to nic się z nimi nie dzieje
 def adjust_photos(p1,p2):
+
 
     #pobiera kształty zdjęć
     h1,w1 = p1.shape[:2]
@@ -194,15 +199,31 @@ def adjust_photos(p1,p2):
     w_max = max(w1,w2)
 
     #tworzy dwa puste zdjęcia o maksymalnych wymiarach
-    im1 = np.zeros((h_max, w_max, 4), np.uint8)
-    im2 = np.zeros((h_max, w_max, 4), np.uint8)
+    if p1.shape[2] == 4:
+        im1 = np.zeros((h_max, w_max, 4), np.uint8)
+    else:
+        im1 = np.zeros((h_max, w_max, 3), np.uint8)
+
+    if p2.shape[2] == 4:
+        im2 = np.zeros((h_max, w_max, 4), np.uint8)
+    else:
+        im2 = np.zeros((h_max, w_max, 3), np.uint8)
 
     #wsadza do nich te mniejsze
-    im1[:h1,:w1,:] = p1
-    im2[:h2,:w2,:] = p2
+    im1[:h1,:w1] = p1[:,:]
+    im2[:h2,:w2] = p2[:,:]
 
-    print("Zostałem dobrze wykorzystany :3")
-    return im1,im2
+    #bardzo specyficzne zabezpieczenia na bardzo specyficzne przypadki
+    if im1.shape==im2.shape:
+        return im1,im2
+
+    elif im1.shape[2]<im2.shape[2]:
+        print("Im1 - bad shape")
+        return im1,im2[:,:,:3]
+
+    else:
+        print("Im2 - bad shape")
+        return im1[:,:,:3],im2
 
 
 #oblicza, o ile stopni ma się obrócić drugie zdjęcie, na podstawie ich dianglów

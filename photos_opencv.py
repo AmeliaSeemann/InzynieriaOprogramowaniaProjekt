@@ -412,6 +412,7 @@ def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max
     sorted_matches.sort(key=lambda x: x[4])
 
     return sorted_matches
+    return sorted_matches
 
 
 def resize_photo_for_analysis(photo, max_dim=800):
