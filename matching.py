@@ -2,7 +2,7 @@
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
 
 from Diangle import all_photos_diangles,diangles_difference
-from photos_opencv import open_photo
+from photos_opencv import open_photo,get_crop
 import cv2 as cv
 import numpy as np
 from sympy import symbols, Eq, solve
@@ -97,7 +97,10 @@ def draw_matches(matches,photos):
     print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
     print(matches[:n])
 
-    for i in range(n):
+    # zakładamy, że dwa matche z rzędu to to samo tylko na odwrót
+    # więc przeskakujemy tylko co drugi
+    # (jakaś namiastka optymalizacji)
+    for i in range(0,n,2):
         # otwiera zdjęcia z tego dopasowania
         photo1 = open_photo(photos[matches[i]['Photo1']])
         photo2 = open_photo(photos[matches[i]['Photo2']])
@@ -340,5 +343,7 @@ def join_photos(p1,p2,x,y):
             if p2[i-p2_height,j-p2_width*2][3]!=0:
                 image[i-y,j+x]=p2[i-p2_height,j-p2_width*2]
 
-    #zwraca całe zdjęcie
+    #zwraca całe zdjęcie, przycięte (nieco eksperymentalnie)
+    x,y,w,h= get_crop(image)
+    image = image[y:y+h,x:x+w]
     return image

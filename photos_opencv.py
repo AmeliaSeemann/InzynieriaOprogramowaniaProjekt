@@ -17,10 +17,7 @@ def get_contours(photo):
 
 #zwraca koordynaty potrzebne do przycięcia zdjęć z przezroczystym tłem
 def get_crop(photo):
-    img = cv.imread(photo, cv.IMREAD_UNCHANGED)
-    if img is None:
-        return None     # plik nie istnieje lub nie jest zdjęciem
-
+    img = photo
     # obraz ma kanał alfa = PNG z przezroczystością
     if img.shape[2] == 4:
         # wyciągamy kanał alfa (odpowiada za przezroczystość)
