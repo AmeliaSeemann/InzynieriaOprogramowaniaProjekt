@@ -16,6 +16,9 @@ from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLa
     QMessageBox, QSpinBox
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
 from matching import true_match_all_photos,draw_matches
+from dialog_window import PreviewDialog
+import tempfile
+
 
 #rozmiary okna aplikacji, można zmieniać do testowania
 WINDOW_WIDTH = 1200
@@ -217,27 +220,60 @@ class MainWindow(QMainWindow):
 
     #to się zmieni, co nie
     def connect_photos(self):
-
-        # to jest zakomentowane bo wyniki dosłownie nie mieszczą się czasem w konsoli
-        # sorted_matches = get_sorted_matches(self.photos_list)
-        # print("Get sorted matches: ")
-        # for match in sorted_matches:
-        #     print(match)
-
-        #wywołuje na razie eksperymentalną funkcję z pliku matching.py
+        if len(self.photos_list) < 2:
+            return
 
         matches = true_match_all_photos(self.photos_list)
-        draw_matches(matches,self.photos_list)
 
 
-        #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
-        #(na razie spreparowany plik)
-        self.reset_state()
-        self.set_photo(self.temporary_filepath)
+        best_image, angle = draw_matches(matches, self.photos_list)
 
-        #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
-        slider = self.findChildren(QSlider)[0]
-        self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
+        dialog = PreviewDialog(best_image, self)
+
+        if dialog.exec():  # ACCEPT
+            # Zapis tymczasowy nowego obrazu
+            temp_path = os.path.join(
+                tempfile.gettempdir(),
+                "combined_result.png"
+            )
+            cv.imwrite(temp_path, best_image)
+
+            # Usuwamy stare zdjęcia
+            self.photos_list.clear()
+
+            # Dodajemy nowe jako jedyne
+            self.photos_list.append(temp_path)
+            self.current_photo_index = 0
+
+            # Wyświetlamy
+            self.set_photo(temp_path)
+
+            # Aktywujemy zapis
+            but_save = self.findChildren(QPushButton)[4]
+            but_save.setEnabled(True)
+
+            self.message_box("Photos connected!", "Success")
+
+        # # to jest zakomentowane bo wyniki dosłownie nie mieszczą się czasem w konsoli
+        # # sorted_matches = get_sorted_matches(self.photos_list)
+        # # print("Get sorted matches: ")
+        # # for match in sorted_matches:
+        # #     print(match)
+        #
+        # #wywołuje na razie eksperymentalną funkcję z pliku matching.py
+        #
+        # matches = true_match_all_photos(self.photos_list)
+        # draw_matches(matches,self.photos_list)
+        #
+        #
+        # #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
+        # #(na razie spreparowany plik)
+        # self.reset_state()
+        # self.set_photo(self.temporary_filepath)
+        #
+        # #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
+        # slider = self.findChildren(QSlider)[0]
+        # self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
 
 
 
@@ -395,3 +431,4 @@ QApplication.setFont(button_font,"QPushButton")
 window = MainWindow()
 window.show()
 app.exec()
+

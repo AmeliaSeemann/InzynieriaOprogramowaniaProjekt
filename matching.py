@@ -163,25 +163,29 @@ def draw_matches(matches,photos):
         # te zdjęcie, które ma mniej "tła" jest tą właściwą wersją
         # (bo mniej tła -> mniej się nałożyły -> bardziej pasują)
         if count1>count2:
-            cv.imshow("Connected",version1)
+            best_version = version1
+            #cv.imshow("Connected",version1)
             true_angle = angle1
         else:
-            cv.imshow("Connected",version2)
+            best_version = version2
+            #cv.imshow("Connected",version2)
             true_angle = angle2
 
+        return best_version, true_angle
         # no i pokazujemy tą właściwą wersję połączonych fragmentó
-        cv.waitKey(0)
-        cv.destroyAllWindows()
+        #cv.waitKey(0)
+        #cv.destroyAllWindows()
+
 
 
         #a tu pokazuje te nie połączone fragmenty
         #razem z kolorowymi oznaczeniami
-        right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=True)
-        im1,im2 = adjust_photos(left_image_vis,right_image_vis)
-        vis = np.concatenate((im1,im2), axis=1)
-        cv.imshow("Not connected",vis)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
+        # right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=True)
+        # im1,im2 = adjust_photos(left_image_vis,right_image_vis)
+        # vis = np.concatenate((im1,im2), axis=1)
+        # cv.imshow("Not connected",vis)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
 
 # z racji, że join_photos() działa tylko dla zdjęć tego samego rozmiaru
 # to tu je ustawiamy by miały taki sam rozmiar
