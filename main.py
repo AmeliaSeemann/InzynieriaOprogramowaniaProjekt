@@ -226,7 +226,8 @@ class MainWindow(QMainWindow):
         matches = true_match_all_photos(self.photos_list)
 
 
-        best_image, angle = draw_matches(matches, self.photos_list)
+        #best_image, angle = draw_matches(matches, self.photos_list)
+        best_image, angle, idx1, idx2 = draw_matches(matches, self.photos_list)
 
         dialog = PreviewDialog(best_image, self)
 
@@ -239,18 +240,22 @@ class MainWindow(QMainWindow):
             cv.imwrite(temp_path, best_image)
 
             # Usuwamy stare zdjęcia
-            self.photos_list.clear()
+            #self.photos_list.clear()
+            for idx in sorted([idx1, idx2], reverse=True):
+                del self.photos_list[idx]
 
             # Dodajemy nowe jako jedyne
-            self.photos_list.append(temp_path)
-            self.current_photo_index = 0
+            # self.photos_list.append(temp_path)
+            # self.current_photo_index = 0
+            self.photos_list.insert(idx1, temp_path)
 
-            # Wyświetlamy
-            self.set_photo(temp_path)
+            # self.current_photo_index = idx1
+            # self.set_photo(temp_path)
 
             # Aktywujemy zapis
             but_save = self.findChildren(QPushButton)[4]
             but_save.setEnabled(True)
+
 
             self.message_box("Photos connected!", "Success")
 

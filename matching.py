@@ -171,7 +171,9 @@ def draw_matches(matches,photos):
             #cv.imshow("Connected",version2)
             true_angle = angle2
 
-        return best_version, true_angle
+        #return best_version, true_angle
+        return best_version, true_angle, matches[i]['Photo1'], matches[i]['Photo2']
+
         # no i pokazujemy tą właściwą wersję połączonych fragmentó
         #cv.waitKey(0)
         #cv.destroyAllWindows()
