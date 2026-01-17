@@ -91,7 +91,8 @@ def draw_dot(photo,x,y):
 #ma rysować Point1 na Photo1
 #rysować Point2 na Photo2
 #jakoś połączyć te dwa zdjęcia i pokazać czy match ma wogóle sens
-def draw_matches(matches,photos):
+#def draw_matches(matches,photos):
+def draw_matches(matches, photos, rejected_pairs):
 
     n=40 #ile "najlepszych" dopasowań chcemy pokazać
     print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
@@ -101,6 +102,14 @@ def draw_matches(matches,photos):
     # więc przeskakujemy tylko co drugi
     # (jakaś namiastka optymalizacji)
     for i in range(0,n,2):
+        p1 = matches[i]['Photo1']
+        p2 = matches[i]['Photo2']
+
+        pair = tuple(sorted((p1, p2)))
+        if pair in rejected_pairs:
+            continue
+
+
         # otwiera zdjęcia z tego dopasowania
         photo1 = open_photo(photos[matches[i]['Photo1']])
         photo2 = open_photo(photos[matches[i]['Photo2']])
@@ -174,7 +183,7 @@ def draw_matches(matches,photos):
         #return best_version, true_angle
         return best_version, true_angle, matches[i]['Photo1'], matches[i]['Photo2']
 
-        # no i pokazujemy tą właściwą wersję połączonych fragmentó
+        # no i pokazujemy tą właściwą wersję połączonych fragmentów
         #cv.waitKey(0)
         #cv.destroyAllWindows()
 

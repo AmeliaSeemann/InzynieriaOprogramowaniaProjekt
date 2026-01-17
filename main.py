@@ -56,6 +56,9 @@ class MainWindow(QMainWindow):
         self.ui_components()
         self.reset_state()
 
+        #lista odrzuconych połączeń
+        self.rejected_pairs = set()
+
     #do wyczyszczenia listy zdjęć i zablokowania odpowiednich przycisków
     def reset_state(self):
         self.photos_list = []
@@ -228,7 +231,12 @@ class MainWindow(QMainWindow):
 
 
         #best_image, angle = draw_matches(matches, self.photos_list)
-        best_image, angle, idx1, idx2 = draw_matches(matches, self.photos_list)
+        #best_image, angle, idx1, idx2 = draw_matches(matches, self.photos_list)
+        best_image, angle, idx1, idx2 = draw_matches(
+            matches,
+            self.photos_list,
+            self.rejected_pairs
+        )
 
         dialog = PreviewDialog(best_image, self)
 
@@ -253,6 +261,8 @@ class MainWindow(QMainWindow):
             self.current_photo_index = insert_idx
             self.set_photo(temp_path)
 
+            self.rejected_pairs.clear()
+
             # self.current_photo_index = idx1
             # self.set_photo(temp_path)
 
@@ -262,6 +272,8 @@ class MainWindow(QMainWindow):
 
 
             self.message_box("Photos connected!", "Success")
+        else:  # REJECT
+            self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
 
         # # to jest zakomentowane bo wyniki dosłownie nie mieszczą się czasem w konsoli
         # # sorted_matches = get_sorted_matches(self.photos_list)
