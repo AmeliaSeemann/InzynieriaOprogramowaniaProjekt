@@ -222,80 +222,56 @@ class MainWindow(QMainWindow):
             self.set_photo(self.photos_list[0])
 
 
-    #to się zmieni, co nie
+    #do łączenia zdjęć
     def connect_photos(self):
+        # jeśli mamy mniej niż 2 zdjęcia, nic nie robimy
         if len(self.photos_list) < 2:
             return
 
+        # dopasowujemy wszystkie zdjęcia do siebie
         matches = true_match_all_photos(self.photos_list)
 
-
-        #best_image, angle = draw_matches(matches, self.photos_list)
-        #best_image, angle, idx1, idx2 = draw_matches(matches, self.photos_list)
+        # wybieramy najlepsze dopasowanie (zdjęcia + kąt) pomijając już odrzucone pary
         best_image, angle, idx1, idx2 = draw_matches(
             matches,
             self.photos_list,
             self.rejected_pairs
         )
 
+        # pokazujemy okno podglądu połączonych zdjęć
         dialog = PreviewDialog(best_image, self)
 
         if dialog.exec():  # ACCEPT
-            # Zapis tymczasowy nowego obrazu
+            # zapisujemy wynik tymczasowo
             temp_path = os.path.join(
                 tempfile.gettempdir(),
                 f"combined_{uuid.uuid4().hex}.png"
             )
             cv.imwrite(temp_path, best_image)
 
-            # Usuwamy stare zdjęcia
-            #self.photos_list.clear()
+            # usuwamy z listy stare zdjęcia, które zostały połączone
             for idx in sorted([idx1, idx2], reverse=True):
                 del self.photos_list[idx]
 
-            # Dodajemy nowe
-            # self.photos_list.append(temp_path)
-            # self.current_photo_index = 0
+            # wstawiamy nowy obraz w miejsce pierwszego z połączonych
             insert_idx = min(idx1, idx2)
             self.photos_list.insert(insert_idx, temp_path)
             self.current_photo_index = insert_idx
             self.set_photo(temp_path)
 
+            # po zaakceptowaniu połączenia możemy wyczyścić listę odrzuconych par,
+            # nowe krawędzie = możliwe nowe połączenia
             self.rejected_pairs.clear()
 
-            # self.current_photo_index = idx1
-            # self.set_photo(temp_path)
-
-            # Aktywujemy zapis
+            # aktywujemy zapis
             but_save = self.findChildren(QPushButton)[4]
             but_save.setEnabled(True)
 
 
-            self.message_box("Photos connected!", "Success")
+            #self.message_box("Photos connected!", "Success")
         else:  # REJECT
+            # dodajemy parę do listy odrzuconych, żeby nie pokazywać jej ponownie
             self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
-
-        # # to jest zakomentowane bo wyniki dosłownie nie mieszczą się czasem w konsoli
-        # # sorted_matches = get_sorted_matches(self.photos_list)
-        # # print("Get sorted matches: ")
-        # # for match in sorted_matches:
-        # #     print(match)
-        #
-        # #wywołuje na razie eksperymentalną funkcję z pliku matching.py
-        #
-        # matches = true_match_all_photos(self.photos_list)
-        # draw_matches(matches,self.photos_list)
-        #
-        #
-        # #usuwa wgrane zdjęcia i wyświetla ich domniemane połączenie
-        # #(na razie spreparowany plik)
-        # self.reset_state()
-        # self.set_photo(self.temporary_filepath)
-        #
-        # #wyświetla info o tym, z jaką dokładnością połączono zdjęcis
-        # slider = self.findChildren(QSlider)[0]
-        # self.message_box(f"Connected photos with a {slider.value()}% precision","Info")
-
 
 
     #zapisywanie końcowego efektu
