@@ -18,6 +18,7 @@ from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_e
 from matching import true_match_all_photos,draw_matches
 from dialog_window import PreviewDialog
 import tempfile
+import uuid
 
 
 #rozmiary okna aplikacji, można zmieniać do testowania
@@ -235,7 +236,7 @@ class MainWindow(QMainWindow):
             # Zapis tymczasowy nowego obrazu
             temp_path = os.path.join(
                 tempfile.gettempdir(),
-                "combined_result.png"
+                f"combined_{uuid.uuid4().hex}.png"
             )
             cv.imwrite(temp_path, best_image)
 
@@ -244,10 +245,13 @@ class MainWindow(QMainWindow):
             for idx in sorted([idx1, idx2], reverse=True):
                 del self.photos_list[idx]
 
-            # Dodajemy nowe jako jedyne
+            # Dodajemy nowe
             # self.photos_list.append(temp_path)
             # self.current_photo_index = 0
-            self.photos_list.insert(idx1, temp_path)
+            insert_idx = min(idx1, idx2)
+            self.photos_list.insert(insert_idx, temp_path)
+            self.current_photo_index = insert_idx
+            self.set_photo(temp_path)
 
             # self.current_photo_index = idx1
             # self.set_photo(temp_path)
