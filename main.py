@@ -264,8 +264,17 @@ class MainWindow(QMainWindow):
             self.rejected_pairs.clear()
 
             # aktywujemy zapis
-            but_save = self.findChildren(QPushButton)[4]
-            but_save.setEnabled(True)
+            # jeśli został tylko jeden obraz, to jest to wynik końcowy
+            if len(self.photos_list) == 1:
+                final_path = self.photos_list[0]
+                self.end_result = QPixmap(final_path)
+
+                but_save = self.findChildren(QPushButton)[4]
+                but_save.setEnabled(True)
+                but_next = self.findChildren(QPushButton)[2]
+                but_next.setEnabled(False)
+                but_con = self.findChildren(QPushButton)[1]
+                but_con.setEnabled(False)
 
 
             #self.message_box("Photos connected!", "Success")
@@ -276,15 +285,20 @@ class MainWindow(QMainWindow):
 
     #zapisywanie końcowego efektu
     def save_photo(self):
-        #użytkownik może wybrać gdzie zapisać
-        directory = QFileDialog.getSaveFileName(self, "Select File",filter="Images (*.png)")[0]
-        #albo się zapisze
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Select File",
+            filter="Images (*.png)"
+        )
+
+        if not filepath:
+            return
+
         try:
-            self.end_result.save(directory[0],"PNG")
-            self.message_box(f"Photos saved to {directory[0]}","Success")
-        #albo nie
+            self.end_result.save(filepath, "PNG")
+            self.message_box(f"Photos saved to:\n{filepath}", "Success")
         except Exception as e:
-            self.message_box("Something went wrong with saving...","Error")
+            self.message_box(str(e), "Error")
 
     def show_edges(self):
         if not self.photos_list:
