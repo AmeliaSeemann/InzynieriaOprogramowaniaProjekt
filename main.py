@@ -13,7 +13,7 @@ import cv2 as cv
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
-    QMessageBox, QSpinBox
+    QMessageBox, QSpinBox, QLineEdit
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
 from matching import true_match_all_photos,draw_matches
 from dialog_window import PreviewDialog
@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
 
         #lista odrzuconych połączeń
         self.rejected_pairs = set()
-
+      
     #do wyczyszczenia listy zdjęć i zablokowania odpowiednich przycisków
     def reset_state(self):
         self.photos_list = []
@@ -152,36 +152,79 @@ class MainWindow(QMainWindow):
         # łączy się z funckją show_edges
         button_show_edges.clicked.connect(self.show_edges)
 
-        #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
-        slider_decription = QLabel(self)
-        slider_decription.setText("Change precision:",)
-        slider_decription.setGeometry(int(WINDOW_WIDTH * 0.4125),int(WINDOW_HEIGHT * 0.85),
-                                      int(WINDOW_WIDTH * 0.1625),int(WINDOW_HEIGHT * 0.05))
+        # #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
+        # slider_decription = QLabel(self)
+        # slider_decription.setText("Change precision:",)
+        # slider_decription.setGeometry(int(WINDOW_WIDTH * 0.4125),int(WINDOW_HEIGHT * 0.85),
+        #                               int(WINDOW_WIDTH * 0.1625),int(WINDOW_HEIGHT * 0.05))
 
-        precision_slider = QSlider(Qt.Horizontal,self)
-        precision_slider.setRange(0,100)
-        precision_slider.setValue(50)
-        precision_slider.setTickPosition(QSlider.TicksBelow)
-        precision_slider.setGeometry(int(WINDOW_WIDTH * 0.4375), int(WINDOW_HEIGHT * 0.917),
-                                     int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
+        # precision_slider = QSlider(Qt.Horizontal,self)
+        # precision_slider.setRange(0,100)
+        # precision_slider.setValue(50)
+        # precision_slider.setTickPosition(QSlider.TicksBelow)
+        # precision_slider.setGeometry(int(WINDOW_WIDTH * 0.4375), int(WINDOW_HEIGHT * 0.917),
+        #                              int(WINDOW_WIDTH * 0.125), int(WINDOW_HEIGHT * 0.05))
 
-        #etykieta z procentami
-        precision_value_label = QSpinBox(self)
-        precision_value_label.setRange(0,100)
-        precision_value_label.setValue(50)
-        precision_value_label.setSuffix(" %")
-        precision_value_label.setGeometry(
-            int(WINDOW_WIDTH * 0.48),
-            int(WINDOW_HEIGHT * 0.96),  # troszkę niżej od suwaka
-            int(WINDOW_WIDTH * 0.05),
-            int(WINDOW_HEIGHT * 0.03)
+        # #etykieta z procentami
+        # precision_value_label = QSpinBox(self)
+        # precision_value_label.setRange(0,100)
+        # precision_value_label.setValue(50)
+        # precision_value_label.setSuffix(" %")
+        # precision_value_label.setGeometry(
+        #     int(WINDOW_WIDTH * 0.48),
+        #     int(WINDOW_HEIGHT * 0.96),  # troszkę niżej od suwaka
+        #     int(WINDOW_WIDTH * 0.05),
+        #     int(WINDOW_HEIGHT * 0.03)
+        # )
+
+        # #Synchronizacja: suwak -> pole tekstowe
+        # precision_slider.valueChanged.connect(precision_value_label.setValue)
+
+        # #Synchronizacja: pole tekstowe -> suwak
+        # precision_value_label.valueChanged.connect(precision_slider.setValue)
+        # ====== INFO O AKTUALNYM ZDJĘCIU ======
+        self.photo_counter_label = QLabel(self)
+        self.photo_counter_label.setText("Photo: 0 / 0")
+        self.photo_counter_label.setAlignment(Qt.AlignCenter)
+        self.photo_counter_label.setGeometry(
+            int(WINDOW_WIDTH * 0.4),
+            int(WINDOW_HEIGHT * 0.85),
+            int(WINDOW_WIDTH * 0.2),
+            int(WINDOW_HEIGHT * 0.05    
+            )   )
+        # ====== PRZEJŚCIE DO KONKRETNEGO ZDJĘCIA ======
+        self.goto_photo_input = QLineEdit(self)
+        self.goto_photo_input.setPlaceholderText("Go to photo #")
+        self.goto_photo_input.setGeometry(
+            int(WINDOW_WIDTH * 0.42),
+            int(WINDOW_HEIGHT * 0.91),
+            int(WINDOW_WIDTH * 0.1),
+            int(WINDOW_HEIGHT * 0.05)
         )
+        self.goto_photo_input.returnPressed.connect(self.go_to_photo)
 
-        #Synchronizacja: suwak -> pole tekstowe
-        precision_slider.valueChanged.connect(precision_value_label.setValue)
 
-        #Synchronizacja: pole tekstowe -> suwak
-        precision_value_label.valueChanged.connect(precision_slider.setValue)
+    def update_photo_counter(self):
+        if not self.photos_list:
+            self.photo_counter_label.setText("Photo: 0 / 0")
+        else:
+            self.photo_counter_label.setText(
+                f"Photo: {self.current_photo_index + 1} / {len(self.photos_list)}"
+            )
+    def go_to_photo(self):
+        if not self.photos_list:
+            return
+
+        try:
+            index = int(self.goto_photo_input.text()) - 1
+            if 0 <= index < len(self.photos_list):
+                self.current_photo_index = index
+                self.change_viewed_photo(index)
+            else:
+                self.message_box("Photo number out of range", "Error")
+        except ValueError:
+            self.message_box("Please enter a valid number", "Error")
+
 
     def load_photos(self):
         #przystosowanie do załadowania nowych zdjęć
@@ -211,6 +254,9 @@ class MainWindow(QMainWindow):
             self.message_box(str(e),"Error")
         finally:
             #odblokowanie paru guzików
+            self.set_photo(self.photos_list[0])
+            self.update_photo_counter()
+
             but_con = self.findChildren(QPushButton)[1]
             but_con.setEnabled(True)
             if len(self.photos_list)>1:
@@ -256,6 +302,8 @@ class MainWindow(QMainWindow):
             # wstawiamy nowy obraz w miejsce pierwszego z połączonych
             insert_idx = min(idx1, idx2)
             self.photos_list.insert(insert_idx, temp_path)
+            self.update_photo_counter()
+
             self.current_photo_index = insert_idx
             self.set_photo(temp_path)
 
@@ -363,6 +411,9 @@ class MainWindow(QMainWindow):
             but_prev.setEnabled(False)
         else:
             but_prev.setEnabled(True)
+
+        self.update_photo_counter()
+
 
     #ustawianie konkretnego zdjęcia jakie ma być widoczne
     #"to_what" to ścieżka do zdjęcia
