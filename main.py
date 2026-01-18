@@ -307,6 +307,9 @@ class MainWindow(QMainWindow):
             self.current_photo_index = insert_idx
             self.set_photo(temp_path)
 
+            self.update_photo_counter()
+
+        
             # po zaakceptowaniu połączenia możemy wyczyścić listę odrzuconych par,
             # nowe krawędzie = możliwe nowe połączenia
             self.rejected_pairs.clear()
@@ -329,6 +332,20 @@ class MainWindow(QMainWindow):
         else:  # REJECT
             # dodajemy parę do listy odrzuconych, żeby nie pokazywać jej ponownie
             self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
+
+        # aktualizacja przycisków nawigacyjnych
+        if self.current_photo_index >= 1:
+            but_prev = self.findChildren(QPushButton)[3]
+            but_prev.setEnabled(True)
+        if self.current_photo_index == 0:
+            but_prev = self.findChildren(QPushButton)[3]
+            but_prev.setEnabled(False)
+        if self.current_photo_index <= len(self.photos_list) - 1:
+            but_next = self.findChildren(QPushButton)[2]
+            but_next.setEnabled(False)
+        if self.current_photo_index < len(self.photos_list) - 1:
+            but_next = self.findChildren(QPushButton)[2]
+            but_next.setEnabled(True)
 
 
     #zapisywanie końcowego efektu
