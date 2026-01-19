@@ -1,7 +1,10 @@
 #Tu mają być funkcje, które dostają zdjęcia jako argumenty, tworzą im
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
 
-from Diangle import all_photos_diangles,diangles_difference
+from Diangle import (all_photos_diangles,
+    diangles_difference,
+    improved_diangle_descriptor,
+    better_diangle_distance)
 from photos_opencv import open_photo,get_crop
 import cv2 as cv
 import numpy as np
@@ -23,6 +26,17 @@ def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
     number_of_top_matches = 100
 
+
+    # Wczytujemy wszystkie zdjęcia w skali szarości RAZ na początku
+    gray_images = []
+    for path in photos:
+        img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+        if img is None:
+            print(f"Błąd wczytywania zdjęcia: {path}")
+            gray_images.append(None)
+        else:
+            gray_images.append(img)
+
     #zdobywa wszystkie diangle
     all_diangles = [
     filter_diangles(photo_diangles)
@@ -42,16 +56,31 @@ def true_match_all_photos(photos):
                     #samym sobą
                     if i==current_photo:
                         continue
+
+                        # Pobieramy obrazy DLA TEJ KONKRETNEJ PARY zdjęć
+                    img1 = gray_images[current_photo]
+                    img2 = gray_images[i]
+
+                        # Zabezpieczenie przed None (bardzo ważne!)
+                    if img1 is None or img2 is None:
+                            continue
                     else:
                         #tu konkretny diangle z jednego zdjęcia przeszukuje
                         #wszystkei diangle innych zdjęć
                         for j in range(len(all_diangles[i])):
                             d2 = all_diangles[i][j]
 
-                            #oblicza podobieństwo aktualnego diangle'a
-                            #i sprawdzanego
-                            diff = diangles_difference(d1, d2)
+                            desc1 = improved_diangle_descriptor(d1, img1)
+                            desc2 = improved_diangle_descriptor(d2, img2)
+
+                            if desc1 is None or desc2 is None:
+                                continue
+
+                            if desc1['is_convex'] != desc2['is_convex']:
+                                continue  # różne typy krawędzi → od razu odrzucamy
+
                             single_match = {}
+                            diff = better_diangle_distance(desc1, desc2)
 
         #np. {'Difference':12,'Point1':[0,100],'Point2':[10,80],'Photo1':0,'Photo2':2'}
         #znaczy, że na zdjęciu 0 punkt o współrzędnych [0,100] ma różnicę 12 z punktem
@@ -64,8 +93,10 @@ def true_match_all_photos(photos):
                             single_match["diangle1"] = d1
                             single_match["diangle2"] = d2
                             # FILTR JAKOŚCI
-                            if diff < 0.3:
+                            if diff < 0.18 and abs(d1.angle - d2.angle) < 28 and probably_same_orientation(d1, d2, img1,
+                                                                                                           img2):
                                 matches.append(single_match)
+
                 current_diangle += 1
             current_photo += 1
 
@@ -383,3 +414,36 @@ def join_photos(p1,p2,x,y):
     x,y,w,h= get_crop(image)
     image = image[y:y+h,x:x+w]
     return image
+
+
+def probably_same_orientation(d1, d2, img1, img2, distance=18):
+
+   # Zwraca True jeśli obie krawędzie mają tło po tej samej stronie
+
+   #(obie wypukłe albo obie wklęsłe względem puzzla)
+
+
+    def outside_brightness(diangle, img):
+        h, w = img.shape[:2]
+        cx, cy = diangle.x, diangle.y
+
+        # wektor normalny "na zewnątrz" trójkąta
+        nx = diangle.yl - diangle.yr
+        ny = diangle.xr - diangle.xl
+        norm = (nx ** 2 + ny ** 2) ** 0.5 + 1e-8
+        nx /= norm
+        ny /= norm
+
+        px = int(cx + nx * distance)
+        py = int(cy + ny * distance)
+
+        if not (0 <= px < w and 0 <= py < h):
+            return 128  # neutralna wartość
+
+        return img[py, px]
+
+    b1 = outside_brightness(d1, img1)
+    b2 = outside_brightness(d2, img2)
+
+    # jeśli różnica jest mała → raczej ten sam typ krawędzi
+    return abs(b1 - b2) < 35  # próg 35–70, zależy od puzzli

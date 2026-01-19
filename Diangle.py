@@ -2,6 +2,7 @@
 #funkcje potrzebne do ich stworzenia lub porównywania.
 #Funkcje porównujące faktycznie zdjęcia mają być w matching.py.
 import math
+import numpy  as np
 
 from photos_opencv import detect_edge_features, open_photo, get_contours, extract_mask_and_contour
 import cv2 as cv
@@ -167,3 +168,100 @@ def all_photos_diangles(photos):
         all_diangles.append(one_photo_diangles(photo))
     return all_diangles
 
+
+
+
+def is_convex(diangle, img=None, distance=20):
+    """
+    Bardzo prosta heurystyka: sprawdza czy 'na zewnątrz' diangla jest jaśniej/ciemniej
+    Alternatywnie można sprawdzić signed area lub turning direction
+    """
+    cx, cy = diangle.x, diangle.y
+
+    # kierunek na zewnątrz (prostopadły do bisectora ramion)
+    dxl = diangle.xl - diangle.x
+    dyl = diangle.yl - diangle.y
+    dxr = diangle.xr - diangle.x
+    dyr = diangle.yr - diangle.y
+
+    # wektor bisector odwrócony (na zewnątrz)
+    bx = -(dxl + dxr)
+    by = -(dyl + dyr)
+    norm = np.hypot(bx, by) + 1e-8
+    bx /= norm
+    by /= norm
+
+    px = int(cx + bx * distance)
+    py = int(cy + by * distance)
+
+    if img is None or not (0 <= px < img.shape[1] and 0 <= py < img.shape[0]):
+        return None  # nie wiemy
+
+    outside_val = img[py, px]
+    inside_val = img[cy, cx]  # w środku diangla
+
+    # jeśli na zewnątrz jest wyraźnie jaśniej → raczej wypukły element puzzla
+    return outside_val > inside_val + 25  # próg do tuningu
+
+
+def improved_diangle_descriptor(d, img=None):
+    len_l = np.hypot(d.xl - d.x, d.yl - d.y)
+    len_r = np.hypot(d.xr - d.x, d.yr - d.y)
+
+    if len_l < 3 or len_r < 3:
+        return None
+
+    # kąt między ramionami (najważniejszy)
+    vec_l = np.array([d.xl - d.x, d.yl - d.y]) / len_l
+    vec_r = np.array([d.xr - d.x, d.yr - d.y]) / len_r
+    cos = np.clip(np.dot(vec_l, vec_r), -1.0, 1.0)
+    angle = np.degrees(np.arccos(cos))
+
+    ratio = min(len_l, len_r) / max(len_l, len_r)
+
+    # kierunek bisectora (pomaga odróżnić orientację)
+    bis = vec_l + vec_r
+    bis /= np.linalg.norm(bis) + 1e-9
+    direction = np.degrees(np.arctan2(bis[1], bis[0])) % 360
+
+    convex = is_convex(d, img) if img is not None else None
+
+    return {
+        'angle': round(angle, 2),
+        'arm_ratio': round(ratio, 3),
+        'direction': round(direction, 1),
+        'is_convex': convex,
+        'arm_lengths': (round(len_l, 1), round(len_r, 1))
+    }
+
+
+def better_diangle_distance(desc1, desc2, weights=None):
+    """
+    Oblicza odległość między dwoma deskryptorami diangli
+    Im mniejsza wartość, tym bardziej podobne diangle
+    """
+    if weights is None:
+        weights = {'angle': 0.55, 'ratio': 0.30, 'direction': 0.15}
+
+    # Najmniejszy kąt między kątami (uwzględniamy, że 0° i 180° mogą być podobne)
+    da = min(
+        abs(desc1['angle'] - desc2['angle']),
+        180 - abs(desc1['angle'] - desc2['angle'])
+    )
+
+    # Różnica proporcji ramion
+    dr = abs(desc1['arm_ratio'] - desc2['arm_ratio'])
+
+    # Najmniejsza różnica kierunku (mod 360°)
+    dd = min(
+        abs(desc1['direction'] - desc2['direction']) % 360,
+        360 - abs(desc1['direction'] - desc2['direction']) % 360
+    )
+
+    score = (
+            weights['angle'] * (da / 30.0) +  # 30° = rozsądna maksymalna różnica kąta
+            weights['ratio'] * dr +  # różnica proporcji 0..1
+            weights['direction'] * (dd / 90.0)  # kierunek bisectora – najmniej pewny
+    )
+
+    return score
