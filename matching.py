@@ -12,12 +12,22 @@ from scipy import ndimage
 
 #AKTUALNE PROBLEMY: dziwne dopasowania, optymalizacja (a raczej jej brak)
 
+def filter_diangles(diangles, min_angle=25):
+    return [
+        d for d in diangles
+        if min_angle < d.angle < 180 - min_angle
+    ]
+
+
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
     number_of_top_matches = 100
 
     #zdobywa wszystkie diangle
-    all_diangles = all_photos_diangles(photos)
+    all_diangles = [
+    filter_diangles(photo_diangles)
+    for photo_diangles in all_photos_diangles(photos)
+]
     current_photo=0
 
     #do przechowywania wyników
@@ -53,12 +63,17 @@ def true_match_all_photos(photos):
                             single_match["Photo2"] = i
                             single_match["diangle1"] = d1
                             single_match["diangle2"] = d2
-                            matches.append(single_match)
+                            # FILTR JAKOŚCI
+                            if diff < 0.3:
+                                matches.append(single_match)
                 current_diangle += 1
             current_photo += 1
 
         #sotruje dopasowania według podobieństwa malejąco
         sorted_matches = sorted(matches, key=lambda d: d['Difference'])
+
+        # usuwa dominację jednej pary zdjęć
+        sorted_matches = unique_photo_pairs(sorted_matches, top_per_pair=5)
 
         #wyświetla tylko ileś topowych dopasowań, bo wszystkie się nie mieszczą
         # print("Sorted matches:")
@@ -70,6 +85,19 @@ def true_match_all_photos(photos):
     except Exception as e:
         print("Ups:",e)
         return None
+
+def unique_photo_pairs(matches, top_per_pair=5):
+    result = []
+    seen = {}
+
+    for m in matches:
+        pair = tuple(sorted((m["Photo1"], m["Photo2"])))
+        seen.setdefault(pair, [])
+        if len(seen[pair]) < top_per_pair:
+            seen[pair].append(m)
+            result.append(m)
+
+    return result
 
 
 #do rysowania pojedyńczego diangla
@@ -308,7 +336,8 @@ def calculate_vector(p1,p2):
     red_points = np.where(mask == 255)
 
     #bierze punkt, który jest środkiem czerwonej kropki więc też środkiem dwójkąta
-    y1,x1 = red_points[0][2], red_points[1][2]
+    y1 = int(np.mean(red_points[0]))
+    x1 = int(np.mean(red_points[1]))
 
     # znajduje czerwone punkty na drugim zdjęciu
     img_hsv = cv.cvtColor(p2, cv.COLOR_BGR2HSV)
@@ -318,7 +347,8 @@ def calculate_vector(p1,p2):
     red_points = np.where(mask == 255)
 
     # bierze punkt, który jest środkiem czerwonej kropki więc też środkiem dwójkąta
-    y2,x2 = red_points[0][2], red_points[1][2]
+    y2 = int(np.mean(red_points[0]))
+    x2 = int(np.mean(red_points[1]))
 
     # oblicza o ile trzeba przesunąć prawe zdjęcie aby dopasować jego czerwoną kropkę
     # z tym po lewej

@@ -374,9 +374,9 @@ class MainWindow(QMainWindow):
             # wykrywanie wypustek i wcięć
             features, vis = detect_edge_features(
                 photo,
-                k=10,
-                angle_thresh_deg=15,
-                min_separation=12,
+                k=5,
+                angle_thresh_deg=8,
+                min_separation=6,
                 visualize=True
             )
 
