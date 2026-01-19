@@ -270,82 +270,86 @@ class MainWindow(QMainWindow):
 
     #do łączenia zdjęć
     def connect_photos(self):
-        # jeśli mamy mniej niż 2 zdjęcia, nic nie robimy
-        if len(self.photos_list) < 2:
-            return
+        try: 
 
-        # dopasowujemy wszystkie zdjęcia do siebie
-        matches = true_match_all_photos(self.photos_list)
+            # jeśli mamy mniej niż 2 zdjęcia, nic nie robimy
+            if len(self.photos_list) < 2:
+                return
 
-        # wybieramy najlepsze dopasowanie (zdjęcia + kąt) pomijając już odrzucone pary
-        best_image, angle, idx1, idx2 = draw_matches(
-            matches,
-            self.photos_list,
-            self.rejected_pairs
-        )
+            # dopasowujemy wszystkie zdjęcia do siebie
+            matches = true_match_all_photos(self.photos_list)
 
-        # pokazujemy okno podglądu połączonych zdjęć
-        dialog = PreviewDialog(best_image, self)
-
-        if dialog.exec():  # ACCEPT
-            # zapisujemy wynik tymczasowo
-            temp_path = os.path.join(
-                tempfile.gettempdir(),
-                f"combined_{uuid.uuid4().hex}.png"
+            # wybieramy najlepsze dopasowanie (zdjęcia + kąt) pomijając już odrzucone pary
+            best_image, angle, idx1, idx2 = draw_matches(
+                matches,
+                self.photos_list,
+                self.rejected_pairs
             )
-            cv.imwrite(temp_path, best_image)
 
-            # usuwamy z listy stare zdjęcia, które zostały połączone
-            for idx in sorted([idx1, idx2], reverse=True):
-                del self.photos_list[idx]
+            # pokazujemy okno podglądu połączonych zdjęć
+            dialog = PreviewDialog(best_image, self)
 
-            # wstawiamy nowy obraz w miejsce pierwszego z połączonych
-            insert_idx = min(idx1, idx2)
-            self.photos_list.insert(insert_idx, temp_path)
-            self.update_photo_counter()
+            if dialog.exec():  # ACCEPT
+                # zapisujemy wynik tymczasowo
+                temp_path = os.path.join(
+                    tempfile.gettempdir(),
+                    f"combined_{uuid.uuid4().hex}.png"
+                )
+                cv.imwrite(temp_path, best_image)
 
-            self.current_photo_index = insert_idx
-            self.set_photo(temp_path)
+                # usuwamy z listy stare zdjęcia, które zostały połączone
+                for idx in sorted([idx1, idx2], reverse=True):
+                    del self.photos_list[idx]
 
-            self.update_photo_counter()
+                # wstawiamy nowy obraz w miejsce pierwszego z połączonych
+                insert_idx = min(idx1, idx2)
+                self.photos_list.insert(insert_idx, temp_path)
+                self.update_photo_counter()
+
+                self.current_photo_index = insert_idx
+                self.set_photo(temp_path)
+
+                self.update_photo_counter()
 
         
-            # po zaakceptowaniu połączenia możemy wyczyścić listę odrzuconych par,
-            # nowe krawędzie = możliwe nowe połączenia
-            self.rejected_pairs.clear()
+                # po zaakceptowaniu połączenia możemy wyczyścić listę odrzuconych par,
+                # nowe krawędzie = możliwe nowe połączenia
+                self.rejected_pairs.clear()
 
-            # aktywujemy zapis
-            # jeśli został tylko jeden obraz, to jest to wynik końcowy
-            if len(self.photos_list) == 1:
-                final_path = self.photos_list[0]
-                self.end_result = QPixmap(final_path)
+                # aktywujemy zapis
+                # jeśli został tylko jeden obraz, to jest to wynik końcowy
+                if len(self.photos_list) == 1:
+                    final_path = self.photos_list[0]
+                    self.end_result = QPixmap(final_path)
 
-                but_save = self.findChildren(QPushButton)[4]
-                but_save.setEnabled(True)
+                    but_save = self.findChildren(QPushButton)[4]
+                    but_save.setEnabled(True)
+                    but_next = self.findChildren(QPushButton)[2]
+                    but_next.setEnabled(False)
+                    but_con = self.findChildren(QPushButton)[1]
+                    but_con.setEnabled(False)
+
+
+                #self.message_box("Photos connected!", "Success")
+            else:  # REJECT
+                # dodajemy parę do listy odrzuconych, żeby nie pokazywać jej ponownie
+                self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
+
+            # aktualizacja przycisków nawigacyjnych
+            if self.current_photo_index >= 1:
+                but_prev = self.findChildren(QPushButton)[3]
+                but_prev.setEnabled(True)
+            if self.current_photo_index == 0:
+                but_prev = self.findChildren(QPushButton)[3]
+                but_prev.setEnabled(False)
+            if self.current_photo_index <= len(self.photos_list) - 1:
                 but_next = self.findChildren(QPushButton)[2]
                 but_next.setEnabled(False)
-                but_con = self.findChildren(QPushButton)[1]
-                but_con.setEnabled(False)
-
-
-            #self.message_box("Photos connected!", "Success")
-        else:  # REJECT
-            # dodajemy parę do listy odrzuconych, żeby nie pokazywać jej ponownie
-            self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
-
-        # aktualizacja przycisków nawigacyjnych
-        if self.current_photo_index >= 1:
-            but_prev = self.findChildren(QPushButton)[3]
-            but_prev.setEnabled(True)
-        if self.current_photo_index == 0:
-            but_prev = self.findChildren(QPushButton)[3]
-            but_prev.setEnabled(False)
-        if self.current_photo_index <= len(self.photos_list) - 1:
-            but_next = self.findChildren(QPushButton)[2]
-            but_next.setEnabled(False)
-        if self.current_photo_index < len(self.photos_list) - 1:
-            but_next = self.findChildren(QPushButton)[2]
-            but_next.setEnabled(True)
+            if self.current_photo_index < len(self.photos_list) - 1:
+                but_next = self.findChildren(QPushButton)[2]
+                but_next.setEnabled(True)
+        except Exception as e:
+            self.message_box(str(e),"Brak połączeń")
 
 
     #zapisywanie końcowego efektu
@@ -374,9 +378,9 @@ class MainWindow(QMainWindow):
             # wykrywanie wypustek i wcięć
             features, vis = detect_edge_features(
                 photo,
-                k=5,
-                angle_thresh_deg=8,
-                min_separation=6,
+                k=10,
+                angle_thresh_deg=15,
+                min_separation=12,
                 visualize=True
             )
 
