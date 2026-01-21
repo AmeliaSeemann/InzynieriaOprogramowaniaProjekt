@@ -52,9 +52,13 @@
 #show link: underline
 
 = Schemat graficzny struktury systemu
-(tu wstawić fotkę folderów jak będzie gotowe)
+Tak prezentuje się główne drzewo plików programu:
+#figure(
+  image("media/pliki.png", width: 60%),
+  caption: [Pliki programu],
+)
 
-(tu wstawić jakiś diagram jak będzie gotowe)
+
 
 - main.py - odpowiada za interfejs użytkownika
 
@@ -64,10 +68,21 @@
 
 - matching.py - odpowiada za dopasowywanie zdjęć oraz wizualizację dopasowań
 
+- dialog_window.py - odpowiada za pomniejszy interfejs użytkownika występujący przy akceptowaniu bądź odrzucaniu dopasowań
 
-Główny skrypt main.py przyjmuje polecenia od użytkownika, czyli wgrywanie i dopasowywanie zdjęć. Ich załadowanie odbywa się przez photos_open.cv, które również znajduje ich cechy. Na podstawie tych cech (czyli wierzchołków, krawędzi, kątów...) zostają utworzone obiekty klasy Diangle wewnątrz pliku Diangle.py. Korzystając z tych obiektów, skrypt matching.py dopasowuje wgrane zdjęcie i wizualizauje ich dopasowania.
+- zdjęcia - folder z podfolderami wypełnionymi różnymi zdjęciami wykorzystywanymi do testowania programu, więcej informacji na ten temat jest w sekcji o testach
+
+Tak prezentuje się schemat graficzny działania programu:
+
+#figure(
+  image("media/diagram.png", width: 60%),
+  caption: [Schemat działania programu],
+)
+
+Główny skrypt main.py przyjmuje polecenia od użytkownika, czyli wgrywanie i dopasowywanie zdjęć. Ich załadowanie odbywa się przez photos_open.cv, które również znajduje ich cechy. Na podstawie tych cech (czyli wierzchołków, krawędzi, kątów...) zostają utworzone obiekty klasy Diangle wewnątrz pliku Diangle.py. Korzystając z tych obiektów, skrypt matching.py dopasowuje wgrane zdjęcie i wizualizuje ich dopasowania. Dopasowania można później zaakceptować bądź odrzucić w oknie dialogowym tworzonym przez plik dialog_window.py.
 = Dokumentacja wewnętrzna
 == Instrukcja użytkowania
+[trzeba napisać co ostatecznie robią jakie guziczki]
 == O pracy zespołowej
 Prace nad projektem dokumentowaliśmy na platformie GitHub oraz za pomocą arkusza Excel. Na samym początku korzystaliśmy również z Trello, aczkolwiek okazało się to przerostem formy nad treścią, więc zostaliśmy przy znacznie wygodniejszym dla nas Excel'u.
 
@@ -165,7 +180,7 @@ Kiedy wektor przesunięcia został obliczony, przygotowujemy dwie pary dopasowan
 Kończymy więc z dwoma wizualizacjami dopasowania, ponieważ wcześniej obliczyliśmy dwa różne kąty obrotu. W tym momencie możemy jednak jednoznacznie wybrać ten właściwy. Jeżeli zdjęcia zostały źle obrócone, to po połączeniu ich w _join_photos()_ będą na siebie w jakimś stopniu nachodzić, co nie dotyczy tych dobrze obróconych. Korzystamy z funkcji _cv.countNonZero()_, do obliczenia ile "tła" mają obie wersje dopasowania. Jako poprawną uznajemy tą, dla której _cv.countNonZero()_ zwróciło mniejszą liczbę, czyli zdjęcia mniej się nakładały.
 
 == Dalsze etapy łączenia fragmentów
-( tu możesz Zuza napisać o tych accept deny i tym stitch all)
+(tu możesz Zuza napisać o tych accept deny i tym stitch all)
 = Podsumowanie
 [Nie ma sensu tego pisać wcześniej, niż na dzień przed faktyczną prezentacją ] 
 
@@ -174,5 +189,8 @@ Kończymy więc z dwoma wizualizacjami dopasowania, ponieważ wcześniej obliczy
 
 
 #pagebreak()
+
+
+
 
 
