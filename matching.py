@@ -198,52 +198,66 @@ def draw_matches(matches, photos, rejected_pairs):
         # cv.destroyAllWindows()
 
 def rotate_and_clean(image, angle):
-    # 1. Obliczenie wymiarów i macierzy
+    # Pobieramy wysokość i szerokość obrazu
     (h, w) = image.shape[:2]
+
+    # Wyznaczamy środek obrazu (punkt, wokół którego obracamy)
     (cX, cY) = (w // 2, h // 2)
 
+    # Tworzymy macierz obrotu
     M = cv.getRotationMatrix2D((cX, cY), angle, 1.0)
+
+    # Wyciągamy wartości cos i sin z macierzy, żeby obliczyć nowy rozmiar obrazu po obrocie
     cos = np.abs(M[0, 0])
     sin = np.abs(M[0, 1])
 
+    # Obliczamy nową szerokość i wysokość obrazu
     nW = int((h * sin) + (w * cos))
     nH = int((h * cos) + (w * sin))
 
+    # Aktualizujemy macierz obrotu, aby uwzględnić przesunięcie
     M[0, 2] += (nW / 2) - cX
     M[1, 2] += (nH / 2) - cY
 
-    # 2. Obrót z interpolacją LINEAR (kompromis między pikselozą a rozmyciem)
-    rotated = cv.warpAffine(image, M, (nW, nH), flags=cv.INTER_LINEAR, borderMode=cv.BORDER_CONSTANT, borderValue=(0,0,0))
+    # Obrót z interpolacją LINEAR, nie jest zbyt kanciasto, ale też nie za bardzo rozmyte, tło wypełniamy czernią
+    rotated = cv.warpAffine(
+        image, 
+        M, 
+        (nW, nH), 
+        flags=cv.INTER_LINEAR, 
+        borderMode=cv.BORDER_CONSTANT, 
+        borderValue=(0,0,0)
+    )
 
-    # 3. CZYSZCZENIE KRAWĘDZI (To naprawi problem "puchnięcia" przy countNonZero)
-    # Tworzymy maskę: wszystko co nie jest idealnie czarne, staje się widoczne, 
-    # ale usuwamy cieniutką mgiełkę wynikającą z interpolacji.
-    
-    # Konwersja do szarości, żeby znaleźć, gdzie jest obraz
+    # CZYSZCZENIE KRAWĘDZI
+
+    # Jeśli obraz jest kolorowy (BGR), zamieniamy go na skalę szarości
     if len(rotated.shape) == 3: # Obraz kolorowy BGR
         gray = cv.cvtColor(rotated, cv.COLOR_BGR2GRAY)
     else: # Obraz BGRA
         gray = rotated[:,:,3] # Kanał alfa
 
-    # Progowanie (Threshold):
-    # Wartość 10 odcina "szum" interpolacji (bardzo ciemne piksele na krawędziach stają się czarne)
+    # Progowanie:
+    # wszystko jaśniejsze niż 10 -> biały (255)
+    # wszystko ciemniejsze -> czarny (0)
+
+    # Dzięki temu:
+    # usuwamy bardzo ciemne „resztki” interpolacji
+    # zostają tylko faktyczne piksele obrazu
+    #trochę się psuje gdy obraz zawiera bardzo ciemne elementy ale trudno
     _, mask = cv.threshold(gray, 10, 255, cv.THRESH_BINARY)
 
-    # Nakładamy wyczyszczoną maskę na obraz (to wyostrza krawędzie)
-    # Bitwise_and zachowa kolor tam, gdzie maska jest biała, a resztę wyczerni
+    # Nakładamy wyczyszczoną maskę na obraz
+    # -tam gdzie maska jest biała -> obraz zostaje
+    # -tam gdzie czarna -> piksele są zerowane (czarne)
     if len(rotated.shape) == 3:
         cleaned = cv.bitwise_and(rotated, rotated, mask=mask)
     else:
-        # Dla 4 kanałów trzeba zadbać o kanał alfa
+        # Dla obrazu z kanałem alfa: podmieniamy alfę na „ostrą” maskę
         cleaned = rotated.copy()
-        cleaned[:, :, 3] = mask # Podmieniamy alfę na tę "ostrą"
+        cleaned[:, :, 3] = mask
 
     return cleaned
-
-
-
-
-
 
 
 # z racji, że join_photos() działa tylko dla zdjęć tego samego rozmiaru
