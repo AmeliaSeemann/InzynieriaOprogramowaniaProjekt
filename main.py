@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         #ustawianie tytułu i rozmiaru
-        self.setWindowTitle("Test")
+        self.setWindowTitle("Puzzle Solver 3000")
         self.setFixedWidth(WINDOW_WIDTH)
         self.setFixedHeight(WINDOW_HEIGHT)
 
@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
 
         #przycisk do dopasowywania zdjęć
         #nie da się go kliknąć póki nie załadowano zdjęć
-        button_connect = QPushButton("Connect Photos",self)
+        button_connect = QPushButton("Connect Photos Manual",self)
         button_connect.setCheckable(False)
         button_load.setEnabled(True)
         button_connect.setGeometry(int(WINDOW_WIDTH * 0.625)
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         button_show_edges.clicked.connect(self.show_edges)
 
         # === STITCH ALL ===
-        self.button_stitch_all = QPushButton("Stitch All", self)
+        self.button_stitch_all = QPushButton("Connect All", self)
         self.button_stitch_all.setCheckable(False)
         self.button_stitch_all.setEnabled(False)
         self.button_stitch_all.setGeometry(
@@ -217,12 +217,13 @@ class MainWindow(QMainWindow):
         )
         self.goto_photo_input.returnPressed.connect(self.go_to_photo)
 
-
+    # Działa bardzo podobnie do connect photos, ale robi to automatycznie dla wszystkich zdjęć
+    # niestety działa tylko dla prostych przypadków i może się zaciąć
     def connect_all_photos(self):
         try:
             # Sprawdzamy, czy mamy z czym pracować
             if len(self.photos_list) < 2:
-                self.message_box("Co najmniej 2 zdjecia", "Info")
+                self.message_box("Need at least 2 photos to connect!", "Info")
                 return
 
             # Informujemy użytkownika, że zaczynamy proces automatyczny
@@ -230,14 +231,14 @@ class MainWindow(QMainWindow):
             
             # Pętla działa dopóki mamy więcej niż jedno zdjęcie na liście
             while len(self.photos_list) > 1:
-                # 1. Szukamy wszystkich dopasowań dla aktualnej listy zdjęć
+                # Szukamy wszystkich dopasowań dla aktualnej listy zdjęć
                 matches = true_match_all_photos(self.photos_list)
                 
                 if not matches:
-                    self.message_box("Nic więcej nie znaleziono. Koniec.", "Koniec")
+                    self.message_box("No more matches found. Stopping stitching.", "Finished")
                     break
 
-                # 2. Pobieramy najlepsze dopasowanie (zawsze pierwsze z posortowanej listy)
+                # Pobieramy najlepsze dopasowanie (zawsze pierwsze z posortowanej listy)
                 # Pomijamy rysowanie diangli, interesuje nas tylko wynik połączenia
                 best_image, angle, idx1, idx2 = draw_matches(
                     matches,
@@ -245,14 +246,14 @@ class MainWindow(QMainWindow):
                     self.rejected_pairs
                 )
 
-                # 3. Zapisujemy połączony fragment do pliku tymczasowego
+                # Zapisujemy połączony fragment do pliku tymczasowego
                 temp_path = os.path.join(
                     tempfile.gettempdir(),
                     f"auto_combined_{uuid.uuid4().hex}.png"
                 )
                 cv.imwrite(temp_path, best_image)
 
-                # 4. Aktualizacja listy zdjęć: usuwamy stare, wstawiamy nowe
+                # Aktualizacja listy zdjęć: usuwamy stare, wstawiamy nowe
                 # Ważne: usuwamy od tyłu, żeby indeksy się nie przesuwały w trakcie
                 indices_to_remove = sorted([idx1, idx2], reverse=True)
                 for idx in indices_to_remove:
@@ -270,7 +271,7 @@ class MainWindow(QMainWindow):
                 self.update_photo_counter()
                 QApplication.processEvents() # Odświeża okno, żeby nie "zamarzło"
 
-            # === PO ZAKOŃCZENIU PĘTLI ===
+            # gdy nam zostanie jedno zdjęcie (końcowy efekt)
             if len(self.photos_list) == 1:
                 final_path = self.photos_list[0]
                 self.end_result = QPixmap(final_path)
@@ -288,7 +289,10 @@ class MainWindow(QMainWindow):
                 but_con = self.findChildren(QPushButton)[1]
                 but_con.setEnabled(False)
 
-                self.message_box("Wszystkie zdjęcia połączone!", "Sukces")
+                but_all = self.findChildren(QPushButton)[6]
+                but_all.setEnabled(False)
+
+                self.message_box("All photos successfully connected into one image!", "Success")
 
         except Exception as e:
             self.message_box(f"{str(e)}", "Error")
