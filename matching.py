@@ -1,12 +1,13 @@
 #Tu mają być funkcje, które dostają zdjęcia jako argumenty, tworzą im
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
 
-from Diangle import all_photos_diangles,diangles_difference
-from photos_opencv import open_photo,get_crop
+from Diangle import all_photos_diangles, diangles_difference
+from photos_opencv import open_photo, get_crop, extract_mask_and_contour
 import cv2 as cv
 import numpy as np
 from sympy import symbols, Eq, solve
 from scipy import ndimage
+import math
 
 
 
@@ -116,106 +117,237 @@ def draw_dot(photo,x,y):
     img = cv.circle(photo,(x,y),1,(0,0,255),-1)
     return img
 
+# Helper: Oblicza transformację (macierz 2x3) dopasowującą diangle2 do diangle1
+# Używa cv.estimateAffinePartial2D dla precyzji
+def calculate_precise_transform(d1, d2):
+    # D1 to diangle na zdjęciu, do którego doklejamy (baza).
+    # D2 to diangle na zdjęciu, które chcemy dopasować (obracane/przesuwane).
+    
+    # Punkty docelowe (na zdjęciu 1): Odwracamy kolejność L->R bo łączenie jest "twarzą w twarz".
+    # Wyobraź sobie dwa puzzle. Żeby pasowały, wypustka jednego musi wejść we wcięcie drugiego.
+    # Lewa strona wcięcia styka się z prawą stroną wypustki.
+    
+    # Pobieramy punkty źródłowe (z D2 - tego co obracamy)
+    # [Lewy, Środek, Prawy]
+    # Konwertujemy na float32, bo tego wymaga OpenCV
+    src_pts = np.float32([
+        [d2.xl, d2.yl],  # Lewy punkt diangla 2
+        [d2.x, d2.y],    # Środkowy punkt diangla 2
+        [d2.xr, d2.yr]   # Prawy punkt diangla 2
+    ])
+    
+    # Pobieramy punkty docelowe (z D1 - tego co stoi w miejscu)
+    # Tutaj odwracamy kolejność: Prawy -> Środek -> Lewy
+    # Dzięki temu "lewe ramię" źródła trafi w "prawe ramię" celu.
+    dst_pts = np.float32([
+        [d1.xr, d1.yr],  # Prawy punkt diangla 1 (pasuje do Lewego z D2)
+        [d1.x, d1.y],    # Środkowy punkt diangla 1 (pasuje do Środka z D2)
+        [d1.xl, d1.yl]   # Lewy punkt diangla 1 (pasuje do Prawego z D2)
+    ])
+    
+    # Obliczamy optymalną transformację sztywną:
+    # - Szuka takiej rotacji i przesunięcia (bez skalowania!), która najlepiej nakłada punkty src na dst.
+    # - estimateAffinePartial2D jest lepsze od zwykłego getAffineTransform, bo
+    #   minimalizuje błąd dla wszystkich 3 punktów, zamiast sztywno brać 3.
+    #   Tutaj mamy akurat 3 punkty, ale algorytm jest bardziej odporny na drobne niedokładności.
+    M, inliers = cv.estimateAffinePartial2D(src_pts, dst_pts)
+    
+    # Zwracamy macierz transformacji 2x3 ([ [cos -sin tx], [sin cos ty] ])
+    return M
+
+# Helper: Sprawdza czy kontur 2 (po transformacji) nie nachodzi na kontur 1
+# Rozwiązanie geometryczne (bez zliczania pikseli masek)
+def verify_no_overlap(photo1, photo2, M, tolerance=5, collision_threshold=10):
+    # 1. Pobieramy kontury (obrysy) obu obiektów.
+    # extract_mask_and_contour zwraca nam listę punktów tworzących obwiednię.
+    _, cnt1 = extract_mask_and_contour(photo1)
+    _, cnt2 = extract_mask_and_contour(photo2)
+    
+    # Jeśli nie udało się znaleźć konturu (np. puste zdjęcie), to bezpieczniej zwrócić False.
+    if cnt1 is None or cnt2 is None:
+        return False
+        
+    # 2. Transformujemy kontur drugiego zdjęcia używając wyliczonej wcześniej macierzy M.
+    # Dzięki temu wiemy, gdzie znajdą się krawędzie zdjęcia 2 po dopasowaniu.
+    cnt2_trans = cv.transform(cnt2, M)
+    
+    # 3. Sprawdzamy kolizję punkt po punkcie.
+    # pointPolygonTest to funkcja OpenCV, która mówi, gdzie leży punkt względem wielokąta (konturu):
+    # > 0 : wewnątrz konturu
+    # < 0 : na zewnątrz konturu
+    # = 0 : idealnie na krawędzi
+    
+    # Prawidłowe dopasowanie puzzli oznacza, że puzzle stykają się krawędziami,
+    # ale jeden nie wchodzi w środek drugiego.
+    
+    bad_points = 0 # licznik punktów, które "weszły" w drugi obiekt
+    
+    # Sprawdzamy co 10-ty punkt drugiego konturu dla wydajności (optymalizacja).
+    # Sprawdzanie każdego punktu byłoby zbyt wolne.
+    for pt in cnt2_trans[::10]:
+        # Pobieramy współrzędne (x, y) punktu
+        p = (float(pt[0][0]), float(pt[0][1]))
+        
+        # Testujemy czy punkt p (z konturu 2) leży wewnątrz konturu 1.
+        # Trzeci argument 'True' oznacza, że funkcja zwróci odległość od krawędzi (w pikselach).
+        # Jeśli dist > 0, to jesteśmy w środku. Im większa liczba, tym głębiej.
+        dist = cv.pointPolygonTest(cnt1, p, True)
+        
+        # Jeśli punkt jest głęboko wewnątrz (> tolerance pikseli), uznajemy to za błąd.
+        # Tolerancja (5px) pozwala na minimalne, niedostrzegalne nachodzenie (błędy zaokrągleń).
+        if dist > tolerance:
+            bad_points += 1
+            # Jeśli za dużo punktów (więcej niż 10) nachodzi, przerywamy.
+            # To oznacza, że zdjęcia się krzyżują/kolidują.
+            if bad_points > collision_threshold:
+                return False # Odrzucamy to dopasowanie
+                
+    # Jeśli pętla przeszła i nie wykryliśmy dużej kolizji - jest OK.
+    return True
+
+# Helper: Skleja zdjęcia używając macierzy afinicznej
+# Macierz afiniczna to macierz 2x3 która mówi jak przesunąć i obrócić zdjęcie
+# img1 to zdjęcie "baza" (nie ruszamy go), img2 to zdjęcie dokładane (transformujemy je macierzą M).
+def stitch_images_affine(img1, img2, M):
+    # Obliczamy rozmiar nowego płótna, które pomieści oba zdjęcia.
+    # img1 to zdjęcie "baza" (nie ruszamy go), img2 to zdjęcie dokładane (transformujemy je macierzą M).
+    
+    h1, w1 = img1.shape[:2]
+    h2, w2 = img2.shape[:2]
+    
+    # 1. Obliczamy gdzie trafią narożniki img1 (one są w (0,0), (w,0) itd.)
+    # Ponieważ img1 się nie rusza, to po prostu jego wymiary.
+    box1 = np.float32([[0, 0], [w1, 0], [w1, h1], [0, h1]])
+    
+    # 2. Obliczamy gdzie trafią narożniki img2 po transformacji M.
+    box2 = np.float32([[0, 0], [w2, 0], [w2, h2], [0, h2]])
+    # cv.transform bierze punkty i wykonuje na nich rotację+przesunięcie z M.
+    box2_trans = cv.transform(np.array([box2]), M)[0]
+    
+    # 3. Łączymy wszystkie punkty (narożniki obu zdjęć), żeby znaleźć minimalne i maksymalne współrzędne.
+    # To wyznaczy ramki nowego, dużego obrazka.
+    all_points = np.vstack((box1, box2_trans))
+    x_min, y_min = np.min(all_points, axis=0) # Lewy górny róg całości
+    x_max, y_max = np.max(all_points, axis=0) # Prawy dolny róg całości
+    
+    # Obliczamy szerokość i wysokość wynikowego płótna
+    new_w = int(np.ceil(x_max - x_min))
+    new_h = int(np.ceil(y_max - y_min))
+    
+    # 4. Tworzymy macierz korekcyjną T (translacja).
+    # Jeśli wynikowa współrzędna x_min wyszła np. -100, to musimy przesunąć wszystko o +100 w prawo,
+    # żeby zmieściło się w obrazku (indeksy w tablicy muszą być >= 0).
+    T = np.float32([
+        [1, 0, -x_min], # przesunięcie w X
+        [0, 1, -y_min], # przesuniecie w Y
+        [0, 0, 1]
+    ])
+    
+    # 5. Przygotowujemy finalną macierz transformacji dla drugiego zdjęcia.
+    # Musimy połączyć dwie operacje:
+    #   M (dopasowanie do img1) -> T (przesunięcie na środek płótna)
+    # Mnożenie macierzy: M_final = T * M
+    M_3x3 = np.vstack((M, [0, 0, 1])) # Rozszerzamy M do 3x3 żeby móc mnożyć
+    M_combined_3x3 = np.matmul(T, M_3x3)
+    M_final = M_combined_3x3[:2, :] # Wracamy do postaci 2x3 wymaganej przez warpAffine
+    
+    # 6. Przygotowujemy transformację dla pierwszego zdjęcia.
+    # Ono się nie obraca, ale też musi zostać przesunięte na środek płótna (o wektor T).
+    M_T = T[:2, :] # Wiersze 0 i 1 z T
+    
+    # 7. Wykonujemy transformacje ("warping")
+    # warpAffine tworzy nowy obraz o wymiarach (new_w, new_h) i "wlewa" w niego piksele
+    # zgodnie z zadaną macierzą.
+    warped1 = cv.warpAffine(img1, M_T, (new_w, new_h))
+    warped2 = cv.warpAffine(img2, M_final, (new_w, new_h))
+    
+    # 8. Sklejamy oba obrazy w jeden.
+    # Tam gdzie warped2 (to dokładane) ma treść (nie jest przezroczyste), tam nadpisuje tło.
+    
+    if warped2.shape[2] == 4:
+        # Jeśli mamy kanał Alfa (przezroczystość):
+        # Tworzymy maskę: tam gdzie alfa > 0, tam jest obraz.
+        mask2 = warped2[:, :, 3] > 0
+        
+        # Kopiujemy warped1 (bazę)
+        img_final = warped1.copy()
+        
+        # Wklejamy warped2 w miejscach gdzie maska mówi że coś jest
+        img_final[mask2] = warped2[mask2]
+    else:
+        # Fallback dla obrazów bez Alfy (zakładamy, że czarne to tło)
+        gray2 = cv.cvtColor(warped2, cv.COLOR_BGR2GRAY)
+        mask2 = gray2 > 0
+        img_final = warped1.copy()
+        img_final[mask2] = warped2[mask2]
+        
+    return img_final
+
 #ma rysować Point1 na Photo1
 #rysować Point2 na Photo2
 #jakoś połączyć te dwa zdjęcia i pokazać czy match ma wogóle sens
 def draw_matches(matches, photos, rejected_pairs):
 
-    n=40 #ile "najlepszych" dopasowań chcemy pokazać
-    print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
-    print(matches[:n])
-
-    # zakładamy, że dwa matche z rzędu to to samo tylko na odwrót
-    # więc przeskakujemy tylko co drugi
-    # (jakaś namiastka optymalizacji)
-    for i in range(0,n,2):
+    n = 40 #ile "najlepszych" dopasowań chcemy sprawdzić
+    print(f"Ilość potencjalnych dopasowań: {len(matches)}")
+    print(f"Sprawdzamy max {n} najlepszych match'y.")
+    
+    # Zabezpieczenie przed 'list index out of range'
+    limit = min(n, len(matches))
+    
+    for i in range(0, limit): 
+        # Pobieramy match
+        match = matches[i]
+        
         # indeksy zdjęć z pary
-        p1 = matches[i]['Photo1']
-        p2 = matches[i]['Photo2']
+        p1_idx = match['Photo1']
+        p2_idx = match['Photo2']
 
-        # jeśli ta para była już odrzucona, pomijamy ją
-        pair = tuple(sorted((p1, p2)))
-        if pair in rejected_pairs:
+        # Sprawdzamy odrzucone pary (używając ścieżek, system robust)
+        path1 = photos[p1_idx]
+        path2 = photos[p2_idx]
+        
+        # Sprawdź czy para (jako zbiór ścieżek) jest w odrzuconych
+        if frozenset([path1, path2]) in rejected_pairs:
             continue
 
         # otwiera zdjęcia z tego dopasowania
-        photo1 = open_photo(photos[matches[i]['Photo1']])
-        photo2 = open_photo(photos[matches[i]['Photo2']])
+        photo1 = open_photo(path1)
+        photo2 = open_photo(path2)
+        
+        if photo1 is None or photo2 is None:
+            continue
 
-        # dostosowuje rozmiary zdjęć by były równe
-        photo1,photo2 = adjust_photos(photo1,photo2)
+        # Pobieramy diangle
+        d1 = match['diangle1']
+        d2 = match['diangle2']
+        
+        # 1. Obliczamy precyzyjną transformację
+        M = calculate_precise_transform(d1, d2)
+        
+        if M is None:
+            continue
+            
+        # 2. Weryfikacja geometryczna (brak nakładania się dużych obszarów)
+        # Rozwiązuje problem "krzyżujących się" zdjęć
+        if not verify_no_overlap(photo1, photo2, M):
+            print(f"Match {i} rejected due to overlap collision.")
+            continue
+            
+        # 3. Jeśli przeszło testy, łączymy zdjęcia
+        best_version = stitch_images_affine(photo1, photo2, M)
+        
+        # Obliczamy kąt dla zwrócenia (z macierzy rotacji)
+        angle_rad = math.atan2(M[1, 0], M[0, 0])
+        true_angle = math.degrees(angle_rad)
 
-        #rysuje dinagle1 na photo1 (do wizualizacji nie połączonych zdjęć)
-        diangle1 = matches[i]['diangle1']
-        left_image_vis = draw_diangle(photo1.copy(),diangle1)
-
-        # rysuje diangle2 na photo2 (do wizualizacji nie połączonych zdjęć)
-        diangle2 = matches[i]['diangle2']
-        right_image_vis = draw_diangle(photo2.copy(),diangle2)
-
-        # to do wizualizacji połączonych zdjęć:
-        left_image = cv.cvtColor(photo1, cv.COLOR_BGR2GRAY)
-        left_image = cv.cvtColor(left_image, cv.COLOR_GRAY2BGR)
-        left_image = draw_dot(left_image,diangle1.x,diangle1.y)
-        right_image = cv.cvtColor(photo2, cv.COLOR_BGR2GRAY)
-        right_image = cv.cvtColor(right_image, cv.COLOR_GRAY2BGR)
-        right_image = draw_dot(right_image, diangle2.x, diangle2.y)
-
-        #oblicza dwa możliwe kąty obrotu, potem sięwybiera właściwy
-        angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
-
-        #obracanie prawego zdjęcia o kąt angle1
-        rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=True)
-
-        #oblicza odległość między punktami dopasowania
-        im1,im2 = adjust_photos(left_image,rotated_right_image1)
-        x,y = calculate_vector(im1,im2)
-        # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
-
-        # łączy dwa zdjęcia join_photos
-        photo2_a1 = ndimage.rotate(photo2, angle1,reshape=True)
-        im1,im2 = adjust_photos(photo1,photo2_a1)
-        version1 = join_photos(im1,im2,x,y)
-
-        #oblicza ile jest "tła" ma tym złączonym zdjęciu
-        gray1 = cv.cvtColor(version1, cv.COLOR_BGR2GRAY)
-        count1 = cv.countNonZero(gray1)
-
-        # obracanie prawego zdjęcia o kąt angle2
-        rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=True)
-        im1,im2 = adjust_photos(left_image,rotated_right_image2)
-        x,y = calculate_vector(im1,im2)
-        # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
-
-        # łączy dwa zdjęcia join_photos
-        photo2_a2 = ndimage.rotate(photo2, angle2,reshape=True)
-        im1,im2 = adjust_photos(photo1,photo2_a2)
-        version2 = join_photos(im1,im2,x,y)
-
-        # oblicza ile jest "tła" ma tym złączonym zdjęciu
-        gray2 = cv.cvtColor(version2, cv.COLOR_BGR2GRAY)
-        count2 = cv.countNonZero(gray2)
-
-        # te zdjęcie, które ma mniej "tła" jest tą właściwą wersją
-        # (bo mniej tła -> mniej się nałożyły -> bardziej pasują)
-        if count1>count2:
-            best_version = version1
-            true_angle = angle1
-        else:
-            best_version = version2
-            true_angle = angle2
-
+        print(f"Found valid match at index {i} with angle {true_angle:.2f}")
+        
         #return najlepsze połaczenie, obrót, indeksy połączonych fragmentów
-        return best_version, true_angle, matches[i]['Photo1'], matches[i]['Photo2']
+        return best_version, true_angle, p1_idx, p2_idx
 
-        #a tu pokazuje te nie połączone fragmenty
-        #razem z kolorowymi oznaczeniami
-        # right_image_vis = ndimage.rotate(right_image_vis, true_angle, reshape=True)
-        # im1,im2 = adjust_photos(left_image_vis,right_image_vis)
-        # vis = np.concatenate((im1,im2), axis=1)
-        # cv.imshow("Not connected",vis)
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
+    # Jeśli nie znaleziono żadnego:
+    raise Exception("Nie znaleziono poprawnych, niekolidujących dopasowań w topowych wynikach.")
 
 # z racji, że join_photos() działa tylko dla zdjęć tego samego rozmiaru
 # to tu je ustawiamy by miały taki sam rozmiar

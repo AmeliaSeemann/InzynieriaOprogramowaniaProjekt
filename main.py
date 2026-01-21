@@ -56,7 +56,8 @@ class MainWindow(QMainWindow):
         self.ui_components()
         self.reset_state()
 
-        #lista odrzuconych połączeń
+        #lista odrzuconych połączeń - przechowuje zestawy ścieżek do plików
+        #używamy frozenset, żeby kolejność nie miała znaczenia
         self.rejected_pairs = set()
       
     #do wyczyszczenia listy zdjęć i zablokowania odpowiednich przycisków
@@ -333,7 +334,10 @@ class MainWindow(QMainWindow):
                 #self.message_box("Photos connected!", "Success")
             else:  # REJECT
                 # dodajemy parę do listy odrzuconych, żeby nie pokazywać jej ponownie
-                self.rejected_pairs.add(tuple(sorted((idx1, idx2))))
+                # używamy ścieżek, bo indeksy się zmieniają
+                path1 = self.photos_list[idx1]
+                path2 = self.photos_list[idx2]
+                self.rejected_pairs.add(frozenset([path1, path2]))
 
             # aktualizacja przycisków nawigacyjnych
             if self.current_photo_index >= 1:
