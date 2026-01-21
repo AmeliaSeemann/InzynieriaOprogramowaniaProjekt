@@ -371,6 +371,7 @@ class MainWindow(QMainWindow):
             # jeśli mamy mniej niż 2 zdjęcia, nic nie robimy
             if len(self.photos_list) < 2:
                 return
+            
 
             # dopasowujemy wszystkie zdjęcia do siebie
             matches = true_match_all_photos(self.photos_list)
@@ -424,6 +425,10 @@ class MainWindow(QMainWindow):
                     but_next.setEnabled(False)
                     but_con = self.findChildren(QPushButton)[1]
                     but_con.setEnabled(False)
+                    but_all = self.findChildren(QPushButton)[6]
+                    but_all.setEnabled(False)
+
+                    self.message_box("All photos successfully connected into one image!", "Success")
 
 
                 #self.message_box("Photos connected!", "Success")
