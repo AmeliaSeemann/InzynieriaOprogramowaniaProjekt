@@ -13,7 +13,7 @@ import cv2 as cv
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
-    QMessageBox, QSpinBox, QLineEdit
+    QMessageBox, QSpinBox, QLineEdit, QProgressDialog
 from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
 from matching import true_match_all_photos,draw_matches
 from dialog_window import PreviewDialog
@@ -226,11 +226,22 @@ class MainWindow(QMainWindow):
                 self.message_box("Need at least 2 photos to connect!", "Info")
                 return
 
-            # Informujemy użytkownika, że zaczynamy proces automatyczny
-            print("...")
+            # Przygotowanie okna postępu
+            progress = QProgressDialog("Automatic connection... Please wait.", "Cancel", 0, len(self.photos_list), self)
+            progress.setWindowTitle("Connecting process")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+            
+            steps = 0   
+
             
             # Pętla działa dopóki mamy więcej niż jedno zdjęcie na liście
             while len(self.photos_list) > 1:
+                # Pozwala na zamknięcie okna przez "Anuluj"
+                if progress.wasCanceled():
+                    break
+
                 # Szukamy wszystkich dopasowań dla aktualnej listy zdjęć
                 matches = true_match_all_photos(self.photos_list)
                 
@@ -263,13 +274,19 @@ class MainWindow(QMainWindow):
                 insert_idx = min(idx1, idx2)
                 self.photos_list.insert(insert_idx, temp_path)
                 
-                # Log do konsoli, żeby było widać postęp
-                print(f"Connected photo {idx1} and {idx2}. Remaining: {len(self.photos_list)}")
-                
-                # Opcjonalnie: aktualizacja UI na bieżąco (może spowalniać, ale daje podgląd)
+                # Aktualizacja UI i paska postępu
+                steps += 1
+                progress.setValue(steps)
                 self.set_photo(temp_path)
                 self.update_photo_counter()
-                QApplication.processEvents() # Odświeża okno, żeby nie "zamarzło"
+                QApplication.processEvents() 
+
+            progress.close() # Zamykamy okno postępu
+                
+                # # Opcjonalnie: aktualizacja UI na bieżąco (może spowalniać, ale daje podgląd)
+                # self.set_photo(temp_path)
+                # self.update_photo_counter()
+                # QApplication.processEvents() # Odświeża okno, żeby nie "zamarzło"
 
             # gdy nam zostanie jedno zdjęcie (końcowy efekt)
             if len(self.photos_list) == 1:
