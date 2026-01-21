@@ -68,11 +68,13 @@ class MainWindow(QMainWindow):
         but_prev = self.findChildren(QPushButton)[3]
         but_sav = self.findChildren(QPushButton)[4]
         but_edges = self.findChildren(QPushButton)[5]
+        but_all = self.findChildren(QPushButton)[6]
         but_con.setEnabled(False)
         but_next.setEnabled(False)
         but_prev.setEnabled(False)
         but_sav.setEnabled(False)
         but_edges.setEnabled(False)
+        but_all.setEnabled(False)
 
     #tworzenie iterfejsu
     def ui_components(self):
@@ -132,9 +134,9 @@ class MainWindow(QMainWindow):
         button_save= QPushButton("Save photo", self)
         button_save.setCheckable(False)
         button_save.setEnabled(False)
-        button_save.setGeometry(int(WINDOW_WIDTH * 0.3525)
+        button_save.setGeometry(int(WINDOW_WIDTH * 0.3825)
                                     , int(WINDOW_HEIGHT * 0.03)
-                                    , int(WINDOW_WIDTH * 0.3125)
+                                    , int(WINDOW_WIDTH * 0.2525)
                                     , int(WINDOW_HEIGHT * 0.08))
 
         # łączy się z funckją save_photo
@@ -145,12 +147,24 @@ class MainWindow(QMainWindow):
         button_show_edges = QPushButton("Show edges", self)
         button_show_edges.setCheckable(False)
         button_show_edges.setEnabled(False)
-        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.6525)
+        button_show_edges.setGeometry(int(WINDOW_WIDTH * 0.6825)
                                     , int(WINDOW_HEIGHT * 0.03)
-                                    , int(WINDOW_WIDTH * 0.3125)
+                                    , int(WINDOW_WIDTH * 0.2825)
                                     , int(WINDOW_HEIGHT * 0.08))
         # łączy się z funckją show_edges
         button_show_edges.clicked.connect(self.show_edges)
+
+        # === STITCH ALL ===
+        self.button_stitch_all = QPushButton("Stitch All", self)
+        self.button_stitch_all.setCheckable(False)
+        self.button_stitch_all.setEnabled(False)
+        self.button_stitch_all.setGeometry(
+            int(WINDOW_WIDTH * 0.0525),
+            int(WINDOW_HEIGHT * 0.03),
+            int(WINDOW_WIDTH * 0.2825),
+            int(WINDOW_HEIGHT * 0.08)
+        )
+        self.button_stitch_all.clicked.connect(self.connect_all_photos)
 
         # #Suwak do ustawiania precyzji (prototypowo od 0 do 100)
         # slider_decription = QLabel(self)
@@ -198,10 +212,86 @@ class MainWindow(QMainWindow):
         self.goto_photo_input.setGeometry(
             int(WINDOW_WIDTH * 0.42),
             int(WINDOW_HEIGHT * 0.91),
-            int(WINDOW_WIDTH * 0.1),
+            int(WINDOW_WIDTH * 0.17),
             int(WINDOW_HEIGHT * 0.05)
         )
         self.goto_photo_input.returnPressed.connect(self.go_to_photo)
+
+
+    def connect_all_photos(self):
+        try:
+            # Sprawdzamy, czy mamy z czym pracować
+            if len(self.photos_list) < 2:
+                self.message_box("Co najmniej 2 zdjecia", "Info")
+                return
+
+            # Informujemy użytkownika, że zaczynamy proces automatyczny
+            print("...")
+            
+            # Pętla działa dopóki mamy więcej niż jedno zdjęcie na liście
+            while len(self.photos_list) > 1:
+                # 1. Szukamy wszystkich dopasowań dla aktualnej listy zdjęć
+                matches = true_match_all_photos(self.photos_list)
+                
+                if not matches:
+                    self.message_box("Nic więcej nie znaleziono. Koniec.", "Koniec")
+                    break
+
+                # 2. Pobieramy najlepsze dopasowanie (zawsze pierwsze z posortowanej listy)
+                # Pomijamy rysowanie diangli, interesuje nas tylko wynik połączenia
+                best_image, angle, idx1, idx2 = draw_matches(
+                    matches,
+                    self.photos_list,
+                    self.rejected_pairs
+                )
+
+                # 3. Zapisujemy połączony fragment do pliku tymczasowego
+                temp_path = os.path.join(
+                    tempfile.gettempdir(),
+                    f"auto_combined_{uuid.uuid4().hex}.png"
+                )
+                cv.imwrite(temp_path, best_image)
+
+                # 4. Aktualizacja listy zdjęć: usuwamy stare, wstawiamy nowe
+                # Ważne: usuwamy od tyłu, żeby indeksy się nie przesuwały w trakcie
+                indices_to_remove = sorted([idx1, idx2], reverse=True)
+                for idx in indices_to_remove:
+                    del self.photos_list[idx]
+
+                # Wstawiamy połączone zdjęcie w miejsce, gdzie był jeden z oryginałów
+                insert_idx = min(idx1, idx2)
+                self.photos_list.insert(insert_idx, temp_path)
+                
+                # Log do konsoli, żeby było widać postęp
+                print(f"Connected photo {idx1} and {idx2}. Remaining: {len(self.photos_list)}")
+                
+                # Opcjonalnie: aktualizacja UI na bieżąco (może spowalniać, ale daje podgląd)
+                self.set_photo(temp_path)
+                self.update_photo_counter()
+                QApplication.processEvents() # Odświeża okno, żeby nie "zamarzło"
+
+            # === PO ZAKOŃCZENIU PĘTLI ===
+            if len(self.photos_list) == 1:
+                final_path = self.photos_list[0]
+                self.end_result = QPixmap(final_path)
+                self.set_photo(final_path)
+
+                # Aktywujemy przycisk zapisu i blokujemy nawigację
+                but_save = self.findChildren(QPushButton)[4]
+                but_save.setEnabled(True)
+                
+                but_next = self.findChildren(QPushButton)[2]
+                but_next.setEnabled(False)
+                but_prev = self.findChildren(QPushButton)[3]
+                but_prev.setEnabled(False)
+                
+                but_con = self.findChildren(QPushButton)[1]
+                but_con.setEnabled(False)
+
+                self.message_box("Wszystkie zdjęcia połączone!", "Sukces")
+
+        except Exception as e:
+            self.message_box(f"{str(e)}", "Error")
 
 
     def update_photo_counter(self):
@@ -257,6 +347,8 @@ class MainWindow(QMainWindow):
             self.set_photo(self.photos_list[0])
             self.update_photo_counter()
 
+            but_all = self.findChildren(QPushButton)[6]
+            but_all.setEnabled(True)
             but_con = self.findChildren(QPushButton)[1]
             but_con.setEnabled(True)
             if len(self.photos_list)>1:

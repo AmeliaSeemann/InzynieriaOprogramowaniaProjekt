@@ -164,10 +164,10 @@ def find_edge_features_from_curvature(contour, k=8, angle_thresh_deg=15, min_sep
     3. Sprawdza:
         czy dany punkt wygina się bardziej niż sąsiednie
         i czy ten skręt jest większy niż ustalony próg (np. 15°)
-    4. Jeśli tak – zapisuje ten punkt jako cechę krawędzi
+    4. Jeśli tak - zapisuje ten punkt jako cechę krawędzi
 
-    angle_thresh_deg – minimalny kąt, od którego uznajemy punkt za ważny
-    min_separation – minimalna odległość między kolejnymi wykrytymi punktami
+    angle_thresh_deg - minimalny kąt, od którego uznajemy punkt za ważny
+    min_separation - minimalna odległość między kolejnymi wykrytymi punktami
 
     Zwraca listę słowników z danymi o cechach krawędzi:
       [{ 'index': i, 'point': (x,y), 'type': 'protrusion'|'indentation', 'angle_deg': val, 'strength': abs(angle_rad) }, ...]

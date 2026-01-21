@@ -1,10 +1,7 @@
 #Tu mają być funkcje, które dostają zdjęcia jako argumenty, tworzą im
 #"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
 
-from Diangle import (all_photos_diangles,
-    diangles_difference,
-    improved_diangle_descriptor,
-    better_diangle_distance)
+from Diangle import all_photos_diangles,diangles_difference
 from photos_opencv import open_photo,get_crop
 import cv2 as cv
 import numpy as np
@@ -15,33 +12,12 @@ from scipy import ndimage
 
 #AKTUALNE PROBLEMY: dziwne dopasowania, optymalizacja (a raczej jej brak)
 
-def filter_diangles(diangles, min_angle=25):
-    return [
-        d for d in diangles
-        if min_angle < d.angle < 180 - min_angle
-    ]
-
-
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
     number_of_top_matches = 100
 
-
-    # Wczytujemy wszystkie zdjęcia w skali szarości RAZ na początku
-    gray_images = []
-    for path in photos:
-        img = cv.imread(path, cv.IMREAD_GRAYSCALE)
-        if img is None:
-            print(f"Błąd wczytywania zdjęcia: {path}")
-            gray_images.append(None)
-        else:
-            gray_images.append(img)
-
     #zdobywa wszystkie diangle
-    all_diangles = [
-    filter_diangles(photo_diangles)
-    for photo_diangles in all_photos_diangles(photos)
-]
+    all_diangles = all_photos_diangles(photos)
     current_photo=0
 
     #do przechowywania wyników
@@ -56,31 +32,16 @@ def true_match_all_photos(photos):
                     #samym sobą
                     if i==current_photo:
                         continue
-
-                        # Pobieramy obrazy DLA TEJ KONKRETNEJ PARY zdjęć
-                    img1 = gray_images[current_photo]
-                    img2 = gray_images[i]
-
-                        # Zabezpieczenie przed None (bardzo ważne!)
-                    if img1 is None or img2 is None:
-                            continue
                     else:
                         #tu konkretny diangle z jednego zdjęcia przeszukuje
                         #wszystkei diangle innych zdjęć
                         for j in range(len(all_diangles[i])):
                             d2 = all_diangles[i][j]
 
-                            desc1 = improved_diangle_descriptor(d1, img1)
-                            desc2 = improved_diangle_descriptor(d2, img2)
-
-                            if desc1 is None or desc2 is None:
-                                continue
-
-                            if desc1['is_convex'] != desc2['is_convex']:
-                                continue  # różne typy krawędzi → od razu odrzucamy
-
+                            #oblicza podobieństwo aktualnego diangle'a
+                            #i sprawdzanego
+                            diff = diangles_difference(d1, d2)
                             single_match = {}
-                            diff = better_diangle_distance(desc1, desc2)
 
         #np. {'Difference':12,'Point1':[0,100],'Point2':[10,80],'Photo1':0,'Photo2':2'}
         #znaczy, że na zdjęciu 0 punkt o współrzędnych [0,100] ma różnicę 12 z punktem
@@ -92,19 +53,12 @@ def true_match_all_photos(photos):
                             single_match["Photo2"] = i
                             single_match["diangle1"] = d1
                             single_match["diangle2"] = d2
-                            # FILTR JAKOŚCI
-                            if diff < 0.18 and abs(d1.angle - d2.angle) < 28 and probably_same_orientation(d1, d2, img1,
-                                                                                                           img2):
-                                matches.append(single_match)
-
+                            matches.append(single_match)
                 current_diangle += 1
             current_photo += 1
 
         #sotruje dopasowania według podobieństwa malejąco
         sorted_matches = sorted(matches, key=lambda d: d['Difference'])
-
-        # usuwa dominację jednej pary zdjęć
-        sorted_matches = unique_photo_pairs(sorted_matches, top_per_pair=5)
 
         #wyświetla tylko ileś topowych dopasowań, bo wszystkie się nie mieszczą
         # print("Sorted matches:")
@@ -116,19 +70,6 @@ def true_match_all_photos(photos):
     except Exception as e:
         print("Ups:",e)
         return None
-
-def unique_photo_pairs(matches, top_per_pair=5):
-    result = []
-    seen = {}
-
-    for m in matches:
-        pair = tuple(sorted((m["Photo1"], m["Photo2"])))
-        seen.setdefault(pair, [])
-        if len(seen[pair]) < top_per_pair:
-            seen[pair].append(m)
-            result.append(m)
-
-    return result
 
 
 #do rysowania pojedyńczego diangla
@@ -196,7 +137,9 @@ def draw_matches(matches, photos, rejected_pairs):
         angle1,angle2 = calculate_rotation_degree(diangle1,diangle2)
 
         #obracanie prawego zdjęcia o kąt angle1
-        rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=True)
+        #rotated_right_image1 = ndimage.rotate(right_image, angle1, reshape=True)
+        #rotated_right_image1 = rotate_image_high_quality(right_image, angle1)
+        rotated_right_image1 = rotate_and_clean(right_image, angle1)
 
         #oblicza odległość między punktami dopasowania
         im1,im2 = adjust_photos(left_image,rotated_right_image1)
@@ -204,7 +147,9 @@ def draw_matches(matches, photos, rejected_pairs):
         # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
 
         # łączy dwa zdjęcia join_photos
-        photo2_a1 = ndimage.rotate(photo2, angle1,reshape=True)
+        #photo2_a1 = ndimage.rotate(photo2, angle1,reshape=True)
+        #photo2_a1 = rotate_image_high_quality(photo2, angle1)
+        photo2_a1 = rotate_and_clean(photo2, angle1)
         im1,im2 = adjust_photos(photo1,photo2_a1)
         version1 = join_photos(im1,im2,x,y)
 
@@ -213,13 +158,17 @@ def draw_matches(matches, photos, rejected_pairs):
         count1 = cv.countNonZero(gray1)
 
         # obracanie prawego zdjęcia o kąt angle2
-        rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=True)
+        #rotated_right_image2 = ndimage.rotate(right_image, angle2, reshape=True)
+        #rotated_right_image2 = rotate_image_high_quality(right_image, angle2)
+        rotated_right_image2 = rotate_and_clean(right_image, angle2)
         im1,im2 = adjust_photos(left_image,rotated_right_image2)
         x,y = calculate_vector(im1,im2)
         # print(f"How to move right image: {x} on X-axis, {y} on Y-axis")
 
         # łączy dwa zdjęcia join_photos
-        photo2_a2 = ndimage.rotate(photo2, angle2,reshape=True)
+        #photo2_a2 = ndimage.rotate(photo2, angle2,reshape=True)
+        #photo2_a2 = rotate_image_high_quality(photo2, angle2)
+        photo2_a2 = rotate_and_clean(photo2, angle2)
         im1,im2 = adjust_photos(photo1,photo2_a2)
         version2 = join_photos(im1,im2,x,y)
 
@@ -247,6 +196,55 @@ def draw_matches(matches, photos, rejected_pairs):
         # cv.imshow("Not connected",vis)
         # cv.waitKey(0)
         # cv.destroyAllWindows()
+
+def rotate_and_clean(image, angle):
+    # 1. Obliczenie wymiarów i macierzy
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w // 2, h // 2)
+
+    M = cv.getRotationMatrix2D((cX, cY), angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    # 2. Obrót z interpolacją LINEAR (kompromis między pikselozą a rozmyciem)
+    rotated = cv.warpAffine(image, M, (nW, nH), flags=cv.INTER_LINEAR, borderMode=cv.BORDER_CONSTANT, borderValue=(0,0,0))
+
+    # 3. CZYSZCZENIE KRAWĘDZI (To naprawi problem "puchnięcia" przy countNonZero)
+    # Tworzymy maskę: wszystko co nie jest idealnie czarne, staje się widoczne, 
+    # ale usuwamy cieniutką mgiełkę wynikającą z interpolacji.
+    
+    # Konwersja do szarości, żeby znaleźć, gdzie jest obraz
+    if len(rotated.shape) == 3: # Obraz kolorowy BGR
+        gray = cv.cvtColor(rotated, cv.COLOR_BGR2GRAY)
+    else: # Obraz BGRA
+        gray = rotated[:,:,3] # Kanał alfa
+
+    # Progowanie (Threshold):
+    # Wartość 10 odcina "szum" interpolacji (bardzo ciemne piksele na krawędziach stają się czarne)
+    _, mask = cv.threshold(gray, 10, 255, cv.THRESH_BINARY)
+
+    # Nakładamy wyczyszczoną maskę na obraz (to wyostrza krawędzie)
+    # Bitwise_and zachowa kolor tam, gdzie maska jest biała, a resztę wyczerni
+    if len(rotated.shape) == 3:
+        cleaned = cv.bitwise_and(rotated, rotated, mask=mask)
+    else:
+        # Dla 4 kanałów trzeba zadbać o kanał alfa
+        cleaned = rotated.copy()
+        cleaned[:, :, 3] = mask # Podmieniamy alfę na tę "ostrą"
+
+    return cleaned
+
+
+
+
+
+
 
 # z racji, że join_photos() działa tylko dla zdjęć tego samego rozmiaru
 # to tu je ustawiamy by miały taki sam rozmiar
@@ -367,8 +365,7 @@ def calculate_vector(p1,p2):
     red_points = np.where(mask == 255)
 
     #bierze punkt, który jest środkiem czerwonej kropki więc też środkiem dwójkąta
-    y1 = int(np.mean(red_points[0]))
-    x1 = int(np.mean(red_points[1]))
+    y1,x1 = red_points[0][2], red_points[1][2]
 
     # znajduje czerwone punkty na drugim zdjęciu
     img_hsv = cv.cvtColor(p2, cv.COLOR_BGR2HSV)
@@ -378,8 +375,7 @@ def calculate_vector(p1,p2):
     red_points = np.where(mask == 255)
 
     # bierze punkt, który jest środkiem czerwonej kropki więc też środkiem dwójkąta
-    y2 = int(np.mean(red_points[0]))
-    x2 = int(np.mean(red_points[1]))
+    y2,x2 = red_points[0][2], red_points[1][2]
 
     # oblicza o ile trzeba przesunąć prawe zdjęcie aby dopasować jego czerwoną kropkę
     # z tym po lewej
@@ -414,36 +410,3 @@ def join_photos(p1,p2,x,y):
     x,y,w,h= get_crop(image)
     image = image[y:y+h,x:x+w]
     return image
-
-
-def probably_same_orientation(d1, d2, img1, img2, distance=18):
-
-   # Zwraca True jeśli obie krawędzie mają tło po tej samej stronie
-
-   #(obie wypukłe albo obie wklęsłe względem puzzla)
-
-
-    def outside_brightness(diangle, img):
-        h, w = img.shape[:2]
-        cx, cy = diangle.x, diangle.y
-
-        # wektor normalny "na zewnątrz" trójkąta
-        nx = diangle.yl - diangle.yr
-        ny = diangle.xr - diangle.xl
-        norm = (nx ** 2 + ny ** 2) ** 0.5 + 1e-8
-        nx /= norm
-        ny /= norm
-
-        px = int(cx + nx * distance)
-        py = int(cy + ny * distance)
-
-        if not (0 <= px < w and 0 <= py < h):
-            return 128  # neutralna wartość
-
-        return img[py, px]
-
-    b1 = outside_brightness(d1, img1)
-    b2 = outside_brightness(d2, img2)
-
-    # jeśli różnica jest mała → raczej ten sam typ krawędzi
-    return abs(b1 - b2) < 35  # próg 35–70, zależy od puzzli
