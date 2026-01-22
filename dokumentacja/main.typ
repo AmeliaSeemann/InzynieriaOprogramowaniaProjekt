@@ -182,7 +182,28 @@ Kończymy więc z dwoma wizualizacjami dopasowania, ponieważ wcześniej obliczy
 == Dalsze etapy łączenia fragmentów
 (tu możesz Zuza napisać o tych accept deny i tym stitch all)
 = Podsumowanie
-[Nie ma sensu tego pisać wcześniej, niż na dzień przed faktyczną prezentacją ] 
+Podsumowując ostatnie miesiące pracy nad projektem, to udało nam się spełnić 
+podstawowe wymagania i założenia. Przygotowany przez nas program dopasowuje nieregularne
+kształty 2D, takie jak fragmenty obrazów czy fresków. Skupiliśmy się wyłącznie na łączeniu
+kawałków według kształtów, potencjalne opcjonalne porównywanie kolorów dość szybko odrzuciliśmy.
+
+Nasz program jest w stanie tworzyć pojedyńcze dopasowania 
+i segregować je według jakości w pełni automatycznie. Przy prostszych przykładach, gdzie 
+fragmenty nie są zbyt mocno obrócone i występuje ich mała liczba, cały proces rekonstrukcji
+początkowego obrazka przechodzi automatycznie. W pozostałych wypadkach program potrzebuje
+odrobinę ludzkiej ingerencji, co jest rozwiązane prostym w obsłudze oknie dialogowym do
+akceptowania bądź odrzucania dopasowań.
+
+W trakcie pracy nie nastąpiły żadne radykalne zmiany wykorzystywanego
+języka (cały czas trzymaliśmy się Pythona) ani bibliotek (poza paroma dodatkowymi które
+musieliśmy zaimportować do pojedynczych funkcji). Jedynie narzędzia pracy zespołowej odrobinę
+się zmieniły, ponieważ przeszliśmy z platformy Trello całkowicie na arkusz w Excel'u. 
+
+Realizacja tego projektu stanowiła dla nas praktyczne doświadczenie pracy nad czymś tak rozbudowanym i skomplikowanym.
+Poznaliśmy lepiej biblioteki do przetwarzania obrazów i niewątpliwie wzmocniliśmy umiejętności rozwiązywania logicznych problemów.
+Mimo, że nasz program nie jest idealny, to efekt końcowy przerósł nasze oczekiwania ponieważ jeszcze kilka miesięcy wcześniej rekonstrukcja 
+fresków wydawała się dla nas tematem abstrakcyjnym i niemożliwym do zrealizowania. Jednak teraz, po różnych wzlotach i upadkach podczas 
+pracy w zespole, możemy być z siebie zadowoleni.
 
 
 
