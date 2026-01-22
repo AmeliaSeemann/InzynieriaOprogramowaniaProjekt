@@ -189,7 +189,84 @@ Kiedy wektor przesunięcia został obliczony, przygotowujemy dwie pary dopasowan
 Kończymy więc z dwoma wizualizacjami dopasowania, ponieważ wcześniej obliczyliśmy dwa różne kąty obrotu. W tym momencie możemy jednak jednoznacznie wybrać ten właściwy. Jeżeli zdjęcia zostały źle obrócone, to po połączeniu ich w _join_photos()_ będą na siebie w jakimś stopniu nachodzić, co nie dotyczy tych dobrze obróconych. Korzystamy z funkcji _cv.countNonZero()_, do obliczenia ile "tła" mają obie wersje dopasowania. Jako poprawną uznajemy tą, dla której _cv.countNonZero()_ zwróciło mniejszą liczbę, czyli zdjęcia mniej się nakładały.
 
 == Dalsze etapy łączenia fragmentów
-(tu możesz Zuza napisać o tych accept deny i tym stitch all)
+=== Tryb ręczny
+
+W trybie ręcznym, obsługiwanym przez funkcję _connect_photos()_, system nie podejmuje decyzji za użytkownika, lecz przedstawia mu propozycję dopasowania w oknie podglądu (_PreviewDialog_). To użytkownik pełni rolę ostatecznego filtra, decydując, czy dane połączenie ma sens.
+
+#figure(
+  image("media/connect_photo_manual1.png", width: 86%),
+  caption: [gdzie uruchomić]
+)
+
+#figure(
+  image("media/connect_photo_manual2.png", width: 86%),
+  caption: [wygląd _PreviewDialog_]
+)
+
+Oto co dzieje się po podjęciu decyzji:
+- *Opcja 1: Akceptacja połączenia (_Accept_)*
+Jeśli użytkownik uzna, że fragmenty pasują do siebie:
++ *Powstaje nowy obraz:* system tworzy jedno nowe zdjęcie z tych dwóch fragmentów o zapisuje je w folderze tymczasowym
++ *Sprzątanie listy:* Dwa stare kawałki znikają z listy zdjęć, w miejsce jednego z nich (który miał niższy indeks) pojawia się ten nowy, połączony. Teraz system widzi go jako pojedynczy element, który można próbować dopasować do reszty.
++ *Czyszczenie listy _rejected_pairs_:* Lista _rejected_pairs_ zostaje wyczyszczona. Skoro powstał nowy kształt krawędzi, system musi mieć szansę ponownie sprawdzić połączenia, które wcześniej mogły zostać odrzucone.
+- *Opcja 2: Odrzucenie połączenia (_Reject_)*
+Jeśli propozycja algorytmu jest błędna:
+ + *Czarna lista (_rejected_pairs_):* Para indeksów tych zdjęć trafia do specjalnego zbioru odrzuconych połączeń.
+ + *Ochrona przed powtarzalnością:* Dzięki zapisaniu tej pary, przy kolejnym kliknięciu _Connect_Photos_Manualy_, funkcja _draw_matches()_ zignoruje to konkretne dopasowanie i od razu przejdzie do kolejnego, statystycznie drugiego w kolejności najlepszego wyniku.
+ + *Brak zmian w plikach:* Żadne zdjęcia nie są usuwane ani modyfikowane. Użytkownik po prostu prosi algorytm o "poszukanie czegoś innego".
+
+
+ 
+
+=== Tryb automatyczny 
+Niestety działa tylko na tych zbiorach prostych, niezawierających zbyt dużo elementów.
+
+Funkcja _connect_all_photos()_ odpowiada za proces automatycznego składania wszystkich załadowanych zdjęć w jedną całość. Działa ona w sposób iteracyjny – w każdej pętli redukuje liczbę luźnych fragmentów, aż pozostanie tylko jeden, kompletny obraz.
+
+#figure(
+  image("media/connect_all_photos1.png"),
+  caption: [gdzie uruchomić]
+)
+
++ *Inicjalizacja i kontrola postępu* 
+
+Na początku system sprawdza, czy na liście znajdują się co najmniej dwa zdjęcia. Jeśli tak, uruchamiane jest okno postępu (_QProgressDialog_). Jest to kluczowe, ponieważ proces dopasowywania jest wymagający obliczeniowo, a okno to pozwala użytkownikowi monitorować postęp lub przerwać operację przyciskiem _Cancel_.
+
+#figure(
+  image("media/connect_all_photos2.png"),
+  caption: [działanie programu _connect_all_]
+)
+
++ *Pętla głównego algorytmu*
+
+Główna logika zamknięta jest w pętli , która wykonuje się, dopóki na liście _photos_list_ jest więcej niż jeden element. Każda iteracja to następujące kroki:
+- *Analiza globalna:* Funkcja _true_match_all_photos()_ przeszukuje wszystkie możliwe pary dostępnych zdjęć i znajduje najbardziej obiecujące dopasowanie.
+- *Generowanie połączenia:* Najlepsza para jest przekazywana do _draw_matches()_, która wykonuje rotację i przesunięcie, tworząc nowy, połączony obraz.
+- *Zarządzanie pamięcią tymczasową:* Ponieważ połączony fragment nie istnieje jeszcze jako stały plik, zostaje on zapisany w katalogu tymczasowym systemu pod unikalną nazwą wygenerowaną przez uuid. Dzięki temu unikamy nadpisywania plików przy kolejnych krokach.
+
+W skrócie mówiąc, program automatycznie wykonuje nam działanie _connect_photos_manual_ i akceptuje wszystkie uzyskane wyniki, aż pozostanie jeden element.
+
+#figure(
+  image("media/connect_all_photos3.png"),
+  caption: [efekt końcowy]
+)
+
+== Zapisywanie efektu końcowego
+
+#figure(
+  image("media/save.png"),
+  caption: [gdzie znaleźć]
+)
+
+Gdy wszystkie fragmenty zostaną połączone w jeden obraz system umożliwia trwałe zapisanie pracy na dysku poprzez funkcję _save_photo()_.
+
+Jak przebiega proces zapisu?
++ *Wybór lokalizacji:* Po kliknięciu przycisku _Save photo_, system otwiera standardowe okno dialogowe wyboru pliku (_QFileDialog.getSaveFileName_). Użytkownik może wtedy wskazać folder oraz nadać nazwę swojemu pliku.
++ *Format pliku:* Program domyślnie sugeruje format PNG. Jest to wybór strategiczny, ponieważ format ten obsługuje przezroczystość (kanał alfa), co jest kluczowe, jeśli wokół ułożonych puzzli ma pozostać puste tło.
++ *Finalizacja:* Jeśli użytkownik zatwierdzi wybór, obiekt _end_result_ (przechowujący końcową grafikę) zostaje przetworzony i zapisany fizycznie na dysku.
+ - Po udanej operacji wyświetla się komunikat "Success" z dokładną ścieżką do pliku.
+ - W przypadku błędu (np. brak uprawnień do zapisu w danym folderze), system wyświetli okno z informacją o problemie.
+
 = Podsumowanie
 Podsumowując ostatnie miesiące pracy nad projektem, to udało nam się spełnić 
 podstawowe wymagania i założenia. Przygotowany przez nas program dopasowuje nieregularne
