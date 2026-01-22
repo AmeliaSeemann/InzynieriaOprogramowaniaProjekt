@@ -116,8 +116,17 @@ Przydatną biblioteką był również _numpy_, ponieważ zdjęcia są w rzeczywi
 Powyższe biblioteki okazały się najbardziej pomocne i planowaliśmy wykorzystanie ich od samego początku, ale po drodze użyliśmy też jeszcze paru innych do pojedynczych zadań. Biblioteka _os_ była konieczna do znajdywania listy zdjęć w danym folderze. Z pomocą biblioteki _scipy_ mogliśmy bardzo łatwo obracać zdjęcia korzystając z modułu _ndimage.rotate()_. Natomiast biblioteka _sympy_ pomogła nam w rozwiązaniu kilku równań.
 == Odnajdywanie cech zdjęć
 
+Proces ten opiera się na analizie geometrii krawędzi obiektów w celu identyfikacji ich kluczowych punktów topograficznych, określanych jako ekstrema krawędziowe. Głównym mechanizmem pozwalającym na matematyczny opis kształtu obrysu jest analiza jago krzywizny lokalnej.
 
-(tu w sumie Zuza możesz coś opisać jak znajdujesz te krawędzie itp, bo ty to robiłaś)
+Kluczowym elementem tego modułu jest funkcja _compute_curvature_, która analizuje przebieg konturu punkt po punkcie i bada stopień geometrycznych załamań linii brzegowej.
+
+Dla każdego punktu na krawędzi funkcja analizuje wektory utworzone między nim a punktami oddalonymi o parametr _k_. Na tej podstawie obliczany jest kąt oraz kierunek odchylenia.
+
+Wynik tej funkcji pozwala sklasyfikować punkty według dwóch kategorii:
+- Wartość ujemna (Kąt wypukły)
+- Wartość dodatnia (Kąt wklęsły)
+
+Następnie funkcja _find_edge_features_from_curvature()_ filtruje te dane, aby wyłonić wyłącznie punkty najbardziej charakterystyczne. System wybiera dany punkt jako cechę charakterystyczną tylko wtedy, gdy spełnia on dwa proste warunki: musi być najmocniejszym zakrętem w swojej okolicy oraz sam zakręt musi być wyraźny (domyślnie u nas jest 15°, wystarczająco mało, by wykryć łagodne łuki, i wystarczająco dużo ignorować poszarpane piksele czy drobne nierówności zdjęcia). Dodatkowo, aby uniknąć tłoku i błędów, system pilnuje, by ważne punkty nie leżały zbyt blisko siebie – jeśli znajdzie jeden silny punkt, ignoruje drobne zakłócenia w jego bezpośrednim sąsiedztwie.
 == Przerobienie cech zdjęć
 
 Po uzyskaniu cech każdego ze zdjęć, nie możemy ich wykorzystywać do dopasowania tak od razu. Wpierw te cechy trzeba przetransformować w coś, co jest łatwiejsze do porównywania niż ich aktualna postać.
