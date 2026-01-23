@@ -79,11 +79,39 @@ Tak prezentuje się schemat graficzny działania programu:
   caption: [Schemat działania programu],
 )
 
-Główny skrypt main.py przyjmuje polecenia od użytkownika, czyli wgrywanie i dopasowywanie zdjęć. Ich załadowanie odbywa się przez photos_open.cv, które również znajduje ich cechy. Na podstawie tych cech (czyli wierzchołków, krawędzi, kątów...) zostają utworzone obiekty klasy Diangle wewnątrz pliku Diangle.py. Korzystając z tych obiektów, skrypt matching.py dopasowuje wgrane zdjęcie i wizualizuje ich dopasowania. Dopasowania można później zaakceptować bądź odrzucić w oknie dialogowym tworzonym przez plik dialog_window.py.
+Główny skrypt _main.py_ przyjmuje polecenia od użytkownika, czyli wgrywanie i dopasowywanie zdjęć. Ich załadowanie odbywa się przez _photos_opencv.py_, które również znajduje ich cechy. Na podstawie tych cech (czyli wierzchołków, krawędzi, kątów...) zostają utworzone obiekty klasy Diangle wewnątrz pliku _Diangle.py_. Korzystając z tych obiektów, skrypt _matching.py_ dopasowuje wgrane zdjęcie i wizualizuje ich dopasowania. Dopasowania można później zaakceptować bądź odrzucić w oknie dialogowym tworzonym przez plik _dialog_window.py_.
 = Dokumentacja wewnętrzna
 == Instrukcja użytkowania
-[trzeba napisać co ostatecznie robią jakie guziczki]
-== O pracy zespołowej
+- Wczytywanie danych
+
+  - Przycisk [_Load Photos_ ]: Po kliknięciu otworzy się eksplorator plików. Należy wskazać folder zawierający fragmenty zdjęć. Program automatycznie załaduje wszystkie obrazy z katalogu i przygotuje je do dalszej pracy.
+
+- Przeglądanie i nawigacja
+  - Wyszukiwarka [_Go to photo_ ]: Jeśli pracujemy z dużą ilością zdjęć, można wpisać numer konkretnego zdjęcia w pole tekstowe na dole ekranu. Program natychmiast wyświetli wybrany fragment, co ułatwia orientację w zestawie.
+
+  - Przyciski [$>>$] i [$<<$]: Służą do przełączania się na następne/poprzednie zdjęcie.
+
+  - Przycisk [_Show edges_]: Pozwala podejrzeć punkty kluczowe (zaznaczone czerwonymi kropkami) na krawędziach fragmentów. Dzięki temu widzimy, jakie miejsca program uznał za charakterystyczne i na jakiej podstawie próbuje je połączyć.
+
+- Łączenie fragmentów (Tryb Ręczny)
+  - Przycisk [_Connect Photo Manual_ ]: Uruchamia znajdywania dopasowań w sposób kontrolowany przez użytkownika. Przy każdym proponowanym dopasowaniu można je zatwierdzić lub odrzucić.
+
+  - Weryfikacja (Okno podglądu): Po obliczeniach pojawi się dodatkowe okno z propozycją połączenia:
+
+  - Przycisk [_Accept_]: Jeśli dopasowanie jest poprawne, fragmenty zostaną trwale złączone w jeden większy element.
+
+  - Przycisk [_Reject_]: Jeśli dopasowanie jest błędne, można zrezygnować i spróbować innej kombinacji.
+
+
+
+-  Łączenie automatyczne (Tryb Szybki)
+
+  - Przycisk [_Connect All_ ]: Najszybsza opcja. Program samodzielnie analizuje wszystkie dostępne części, szuka pasujących par i składa je w całość bez konieczności ręcznego potwierdzania każdego kroku. Po zakończeniu od razu prezentowany jest finalny obraz.
+
+- Zapisywanie efektów
+
+  - Pobieranie wyniku: Gdy proces układania dobiegnie końca, można pobrać gotowe, połączone zdjęcie i zapisać je na swoim urządzeniu.
+== O narzędziach pracy zespołowej
 Prace nad projektem dokumentowaliśmy na platformie GitHub oraz za pomocą arkusza Excel. Na samym początku korzystaliśmy również z Trello, aczkolwiek okazało się to przerostem formy nad treścią, więc zostaliśmy przy znacznie wygodniejszym dla nas Excel'u.
 
 Składa się on z czterech arkuszy, czyli po jednym indywidualnym na osobę oraz jeden wspólny. Dla każdego zadania jest udokumentowana jego nazwa, przypisana osoba, przewidywany i realny czas pracy oraz wyjaśnienie nieścisłości, jeżeli się akurat pojawiły. Każdy ma też zsumowane swoje godziny pracy. Wygląd arkusza delikatnie ewoluował w trakcie pracy, ale zdecydowanie w sensie pozytywnym.
@@ -118,7 +146,7 @@ Powyższe biblioteki okazały się najbardziej pomocne i planowaliśmy wykorzyst
 
 Proces ten opiera się na analizie geometrii krawędzi obiektów w celu identyfikacji ich kluczowych punktów topograficznych, określanych jako ekstrema krawędziowe. Głównym mechanizmem pozwalającym na matematyczny opis kształtu obrysu jest analiza jago krzywizny lokalnej.
 
-Kluczowym elementem tego modułu jest funkcja _compute_curvature_, która analizuje przebieg konturu punkt po punkcie i bada stopień geometrycznych załamań linii brzegowej.
+Kluczowym elementem tego modułu jest funkcja _compute_curvature()_, która analizuje przebieg konturu punkt po punkcie i bada stopień geometrycznych załamań linii brzegowej.
 
 Dla każdego punktu na krawędzi funkcja analizuje wektory utworzone między nim a punktami oddalonymi o parametr _k_. Na tej podstawie obliczany jest kąt oraz kierunek odchylenia.
 
@@ -127,6 +155,18 @@ Wynik tej funkcji pozwala sklasyfikować punkty według dwóch kategorii:
 - Wartość dodatnia (Kąt wklęsły)
 
 Następnie funkcja _find_edge_features_from_curvature()_ filtruje te dane, aby wyłonić wyłącznie punkty najbardziej charakterystyczne. System wybiera dany punkt jako cechę charakterystyczną tylko wtedy, gdy spełnia on dwa proste warunki: musi być najmocniejszym zakrętem w swojej okolicy oraz sam zakręt musi być wyraźny (domyślnie u nas jest 15°, wystarczająco mało, by wykryć łagodne łuki, i wystarczająco dużo ignorować poszarpane piksele czy drobne nierówności zdjęcia). Dodatkowo, aby uniknąć tłoku i błędów, system pilnuje, by ważne punkty nie leżały zbyt blisko siebie – jeśli znajdzie jeden silny punkt, ignoruje drobne zakłócenia w jego bezpośrednim sąsiedztwie.
+
+#figure(
+  image("media/show_krawedzie1.png"),
+  caption: [gdzie uruchomić pokaz krawędzi]
+)
+
+#figure(
+  image("media/show_krawedzi2.png"),
+  caption: [wykryte krawędzie]
+)
+
+
 == Przerobienie cech zdjęć
 
 Po uzyskaniu cech każdego ze zdjęć, nie możemy ich wykorzystywać do dopasowania tak od razu. Wpierw te cechy trzeba przetransformować w coś, co jest łatwiejsze do porównywania niż ich aktualna postać.
@@ -228,7 +268,7 @@ Funkcja _connect_all_photos()_ odpowiada za proces automatycznego składania wsz
   caption: [gdzie uruchomić]
 )
 
-+ *Inicjalizacja i kontrola postępu* 
+1. *Inicjalizacja i kontrola postępu* 
 
 Na początku system sprawdza, czy na liście znajdują się co najmniej dwa zdjęcia. Jeśli tak, uruchamiane jest okno postępu (_QProgressDialog_). Jest to kluczowe, ponieważ proces dopasowywania jest wymagający obliczeniowo, a okno to pozwala użytkownikowi monitorować postęp lub przerwać operację przyciskiem _Cancel_.
 
@@ -237,7 +277,7 @@ Na początku system sprawdza, czy na liście znajdują się co najmniej dwa zdj�
   caption: [działanie programu _connect_all_]
 )
 
-+ *Pętla głównego algorytmu*
+2. *Pętla głównego algorytmu*
 
 Główna logika zamknięta jest w pętli , która wykonuje się, dopóki na liście _photos_list_ jest więcej niż jeden element. Każda iteracja to następujące kroki:
 - *Analiza globalna:* Funkcja _true_match_all_photos()_ przeszukuje wszystkie możliwe pary dostępnych zdjęć i znajduje najbardziej obiecujące dopasowanie.
@@ -261,19 +301,82 @@ W skrócie mówiąc, program automatycznie wykonuje nam działanie _connect_phot
 Gdy wszystkie fragmenty zostaną połączone w jeden obraz system umożliwia trwałe zapisanie pracy na dysku poprzez funkcję _save_photo()_.
 
 Jak przebiega proces zapisu?
-+ *Wybór lokalizacji:* Po kliknięciu przycisku _Save photo_, system otwiera standardowe okno dialogowe wyboru pliku (_QFileDialog.getSaveFileName_). Użytkownik może wtedy wskazać folder oraz nadać nazwę swojemu pliku.
++ *Wybór lokalizacji:* Po kliknięciu przycisku _Save photo_, system otwiera standardowe okno dialogowe wyboru pliku (_QFileDialog.getSaveFileName_). Użytkownik może wtedy wskazać folder oraz nadać nazwę swojemu plikowi.
 + *Format pliku:* Program domyślnie sugeruje format PNG. Jest to wybór strategiczny, ponieważ format ten obsługuje przezroczystość (kanał alfa), co jest kluczowe, jeśli wokół ułożonych puzzli ma pozostać puste tło.
 + *Finalizacja:* Jeśli użytkownik zatwierdzi wybór, obiekt _end_result_ (przechowujący końcową grafikę) zostaje przetworzony i zapisany fizycznie na dysku.
  - Po udanej operacji wyświetla się komunikat "Success" z dokładną ścieżką do pliku.
  - W przypadku błędu (np. brak uprawnień do zapisu w danym folderze), system wyświetli okno z informacją o problemie.
 
+= Testy
+== Przeprowadzone testy jednostkowe
+W projekcie przeprowadzono systematyczne testy jednostkowe kluczowych modułów aplikacji.
+Testy zostały zaimplementowane z wykorzystaniem biblioteki _pytest_ i miały charakter testów automatycznych.
+Ich celem była weryfikacja poprawności działania poszczególnych funkcji oraz odporności kodu na nietypowe dane wejściowe.
+
+== Testy modułu `test_diangle.py`
+
+Plik `test_diangle.py` zawiera testy jednostkowe klasy `Diangle` oraz funkcji `diangles_difference`, odpowiedzialnych za reprezentację oraz porównywanie tzw. dwójkątów.
+
+=== Zakres testów
+
+- weryfikację poprawności inicjalizacji obiektu `Diangle` przez konstruktor,
+- sprawdzenie poprawności obliczania długości ramion dwójkąta,
+- test metody obliczającej odległość pomiędzy punktami,
+- sprawdzenie poprawności działania funkcji porównującej dwójkąty tego samego oraz różnych typów,
+- weryfikację odporności funkcji na wartości zerowe i zabezpieczenie przed błędami dzielenia przez zero.
+
+Wszystkie testy w module `test_diangle.py` zakończyły się powodzeniem, co potwierdza poprawność implementacji logiki geometrycznej oraz stabilność funkcji pomocniczych.
+
+
+
+== Testy modułu `test_matching.py`
+
+Plik `test_matching.py` zawiera testy jednostkowe funkcji odpowiedzialnych za przetwarzanie obrazów, dopasowywanie fragmentów oraz obliczenia geometryczne wykorzystywane w procesie dopasowywania obrazów.
+
+=== Zakres testów
+
+- `adjust_photos` – sprawdzenie poprawnego wyrównywania rozmiarów obrazów wejściowych,
+- `rotate_and_clean` – weryfikację poprawności obrotu obrazu oraz zachowania liczby kanałów kolorów,
+- `calculate_rotation_degree` – sprawdzenie poprawności obliczania kątów obrotu na podstawie danych geometrycznych,
+- `calculate_vector` – test obliczania wektora przesunięcia na podstawie wykrytych punktów charakterystycznych,
+- `join_photos` – sprawdzenie poprawnego łączenia dwóch obrazów w jeden wynikowy.
+
+
+
+== Niepowodzenia testów – analiza błędów
+
+Podczas testowania funkcji `calculate_vector` wystąpił błąd:
+Funkcja zakładała, że wykryta czerwona kropka na obrazie składa się z co najmniej trzech pikseli. Założenie to było niejawne i nie zostało wcześniej zabezpieczone w kodzie.  
+Początkowy przypadek testowy zawierał pojedynczy piksel, co ujawniło to ograniczenie algorytmu.
+
+
+
+
+== Przykłady
+
+Test „adjust_photos” – dopasowanie rozmiaru i proporcji puzzli przed porównywaniem
+Funkcja adjust_photos(img1, img2) ma za zadanie przygotować dwa obrazy tak, aby miały taki sam rozmiar i proporcje, zanim algorytm zacznie szukać punktów wspólnych / dopasowań krawędzi / cech.
+
+
+Test pokazuje, że po wywołaniu funkcji oba obrazy mają taki sam rozmiar (np. obie mają wysokość 100 px lub obie 200 px – w zależności od implementacji)
+proporcje są zachowane kształt puzzla jest nadal widoczny – nie został zniekształcony
+
+#image("before 1.png")
+#image("after 1.png")
+#image("before 2.png")
+#image("after 2.png")
+
+Test integracyjny ujawnił brak obsługi przypadku, w którym algorytm nie wykrywa punktów charakterystycznych. Funkcja _calculate_vector()_ nie posiada zabezpieczenia przed pustym zbiorem punktów, co prowadzi do wyjątku wykonania.
+
+
+Podczas testu integracyjnego stwierdzono, że funkcja _calculate_vector()_ nie obsługuje przypadku braku wykrytych punktów charakterystycznych. Test ujawnił wyjątek wykonania, co pozwoliło na wprowadzenie mechanizmu zabezpieczającego. Po dodaniu warunku sprawdzającego poprawność danych wejściowych, test zakończył się poprawnie.
 = Podsumowanie
 Podsumowując ostatnie miesiące pracy nad projektem, to udało nam się spełnić 
 podstawowe wymagania i założenia. Przygotowany przez nas program dopasowuje nieregularne
 kształty 2D, takie jak fragmenty obrazów czy fresków. Skupiliśmy się wyłącznie na łączeniu
 kawałków według kształtów, potencjalne opcjonalne porównywanie kolorów dość szybko odrzuciliśmy.
 
-Nasz program jest w stanie tworzyć pojedyńcze dopasowania 
+Nasz program jest w stanie tworzyć pojedyncze dopasowania 
 i segregować je według jakości w pełni automatycznie. Przy prostszych przykładach, gdzie 
 fragmenty nie są zbyt mocno obrócone i występuje ich mała liczba, cały proces rekonstrukcji
 początkowego obrazka przechodzi automatycznie. W pozostałych wypadkach program potrzebuje
@@ -285,19 +388,5 @@ języka (cały czas trzymaliśmy się Pythona) ani bibliotek (poza paroma dodatk
 musieliśmy zaimportować do pojedynczych funkcji). Jedynie narzędzia pracy zespołowej odrobinę
 się zmieniły, ponieważ przeszliśmy z platformy Trello całkowicie na arkusz w Excel'u. 
 
-Realizacja tego projektu stanowiła dla nas praktyczne doświadczenie pracy nad czymś tak rozbudowanym i skomplikowanym.
-Poznaliśmy lepiej biblioteki do przetwarzania obrazów i niewątpliwie wzmocniliśmy umiejętności rozwiązywania logicznych problemów.
-Mimo, że nasz program nie jest idealny, to efekt końcowy przerósł nasze oczekiwania ponieważ jeszcze kilka miesięcy wcześniej rekonstrukcja 
-fresków wydawała się dla nas tematem abstrakcyjnym i niemożliwym do zrealizowania. Jednak teraz, po różnych wzlotach i upadkach podczas 
-pracy w zespole, możemy być z siebie zadowoleni.
-
-
-
-
-
-#pagebreak()
-
-
-
-
+Realizacja tego projektu stanowiła dla nas praktyczne doświadczenie pracy nad czymś tak rozbudowanym i skomplikowanym. Poznaliśmy lepiej biblioteki do przetwarzania obrazów i niewątpliwie wzmocniliśmy umiejętności rozwiązywania logicznych problemów. Mimo, że nasz program nie jest idealny, to efekt końcowy przerósł nasze oczekiwania ponieważ jeszcze kilka miesięcy wcześniej rekonstrukcja fresków wydawała się dla nas tematem abstrakcyjnym i niemożliwym do zrealizowania. Jednak teraz, po różnych wzlotach i upadkach podczas pracy w zespole, możemy być z siebie zadowoleni.
 
