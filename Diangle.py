@@ -1,13 +1,16 @@
 #Ten plik odpowiada wyłącznie za zdefiniowanie Diangle'ów oraz
 #funkcje potrzebne do ich stworzenia lub porównywania.
 #Funkcje porównujące faktycznie zdjęcia mają być w matching.py.
+
 from photos_opencv import detect_edge_features, open_photo, get_contours, extract_mask_and_contour
 import cv2 as cv
-#diangle - "dwójkąt" (słowo zmyślone) [powinny się nazwyać "jednokątami" bo mają tylko jeden kąt ale cicho...]
+
+#diangle - "dwójkąt" (słowo zmyślone)
+# [powinny się nazwyać "jednokątami" bo mają tylko jeden kąt ale mniejsza o to]
 #opisuje trzy punkty, dwie łączące je krawędzie i kąt między nimi
-#na ich podstawie będziemy dopasowywać ze sobą zdjęcia, chyba...
+
 class Diangle:
-    #typowy konstruktor, nie trzeba się nim martwić
+    #konstruktor, zwyczajny
     def __init__(self,center_coords,left_coords,right_coords,angle,type):
         self.x=center_coords[0]
         self.y=center_coords[1]
@@ -37,7 +40,8 @@ class Diangle:
         return (abs(x1-x2)**2+abs(y1-y2)**2)**0.5
 
 
-#AKTUALNE PROBLEMY: chyba brak?
+#f unkcja sprawdzająca jak bardzo dwa Diangle się różnią
+# na jej podstawie dopasowujemy zdjęcia
 def diangles_difference(d1, d2):
 
     #jak oba są wypukłe, albo oba wklęsłe, to nawet nie bierze ich pod uwagę
@@ -45,8 +49,7 @@ def diangles_difference(d1, d2):
         return 9999
 
     #wagi tego, jak dużo znaczą podobieństwa kąta i podobieństwa ramienia
-    #na razie wszystko jest ustawione na tyle samo
-    #można z tym poeksperymentować
+    #(wszystko ma taką samą wagę)
     angle_wage = 0.33
     arm_wage = (1-angle_wage)/2
 
@@ -105,7 +108,7 @@ def one_photo_diangles(photo):
     some_diangles = []
     features_bad = detect_edge_features(open_photo(photo))[0]
 
-    #tu sobie sortuje cechy, aby diangle miały sens
+    #tu sortuje cechy, aby diangle były tworzone z punktó obok siebie
     features = sort_features_for_diangles(features_bad, photo)
 
     #łączy punkty od [1] do przedostatniego w dwójkąty po trzy punkty
@@ -144,8 +147,6 @@ def one_photo_diangles(photo):
 def all_photos_diangles(photos):
     all_diangles = []
     for photo in photos:
-        #na razie wszystkie jest w zagnieżdżonej liście
-        #ale nic nie stoi na przeszkodzie by zrobić z tego jakiś słownik potem
         all_diangles.append(one_photo_diangles(photo))
     return all_diangles
 

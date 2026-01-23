@@ -1,5 +1,4 @@
-#Tu mają być funkcje, które dostają zdjęcia jako argumenty, tworzą im
-#"dwójkąty", a potem porównują i może wyświetlają wyniki tego.
+# Ten plik odpowiada za dopasowywanie zdjęć
 
 from Diangle import all_photos_diangles,diangles_difference
 from photos_opencv import open_photo,get_crop
@@ -8,9 +7,6 @@ import numpy as np
 from sympy import symbols, Eq, solve
 from scipy import ndimage
 
-
-
-#AKTUALNE PROBLEMY: dziwne dopasowania, optymalizacja (a raczej jej brak)
 
 def true_match_all_photos(photos):
     #do tego, ile topowych dopasować wyświetlić (żeby nie wysadzić terminala)
@@ -23,7 +19,6 @@ def true_match_all_photos(photos):
     #do przechowywania wyników
     matches = []
     try:
-        #troche skomplikowany ten for ale spokojnie
         for photo in all_diangles:
             current_diangle=0
             for d1 in photo:
@@ -34,7 +29,7 @@ def true_match_all_photos(photos):
                         continue
                     else:
                         #tu konkretny diangle z jednego zdjęcia przeszukuje
-                        #wszystkei diangle innych zdjęć
+                        #wszystkie diangle innych zdjęć
                         for j in range(len(all_diangles[i])):
                             d2 = all_diangles[i][j]
 
@@ -68,7 +63,7 @@ def true_match_all_photos(photos):
 
     #to tak na wszelki wypadek bo wcześniej było parę problemów
     except Exception as e:
-        print("Ups:",e)
+        print("Error:",e)
         return None
 
 
@@ -94,8 +89,8 @@ def draw_dot(photo,x,y):
 def draw_matches(matches, photos, rejected_pairs):
 
     n=40 #ile "najlepszych" dopasowań chcemy pokazać
-    print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
-    print(matches[:n])
+    #print(f"Pokazujemy {n} najlepszych match'y, możesz to zmienić w funkcji draw_matches w matching.py :)")
+    #print(matches[:n])
 
     # zakładamy, że dwa matche z rzędu to to samo tylko na odwrót
     # więc przeskakujemy tylko co drugi
@@ -309,9 +304,7 @@ def adjust_photos(p1,p2):
 #oblicza, o ile stopni ma się obrócić drugie zdjęcie, na podstawie ich dianglów
 def calculate_rotation_degree(d1,d2):
 
-    # to się dzieje na bazie jakiejś matematyki której na ten moment już nie kumam
-    # ale ostatecznie zwraca sensowne wyniki, kiedyś to było dla mnie zrozumiałe,
-    # teraz nieco mniej
+    # jak ta funkcja działą - nie wie nikt, aczkolwiek działa
 
 
     #tu liczy jakieś równanie prostej łączącej lewy i prawy wierzchołek diangla
@@ -325,7 +318,7 @@ def calculate_rotation_degree(d1,d2):
     b1_up = d1.y - (1 / sol1[a1]) * d1.x
     a1_up = 1/sol1[a1]
 
-    #magią pitagorasa i trygonometri oblicza kąt pod jakim jest zdjęcie??
+    #magią pitagorasa i trygonometri oblicza kąt pod jakim jest zdjęcie
     x1_hit = -1*b1_up/a1_up
     c_bok = (d1.y ** 2 + (d1.x - x1_hit) ** 2) ** 0.5
     ratio1 = d1.y / c_bok
@@ -351,10 +344,6 @@ def calculate_rotation_degree(d1,d2):
         beta = np.degrees(np.arccos(np.float64(ratio2)))
 
 
-    #PROBLEM: czasem pasuje kąt difference, a czasem difference+180
-    #Nie wiem na jakiej podstawie wybiera się ten właściwy
-    #Bierzemy więc dwa i potem w draw_matches() się wybiera ten lepszy
-
     #różnica między kątem obu zdjęć
     difference = -(alpha-beta)
 
@@ -379,6 +368,8 @@ def calculate_vector(p1,p2):
     red_points = np.where(mask == 255)
 
     #bierze punkt, który jest środkiem czerwonej kropki więc też środkiem dwójkąta
+    #(ZAWSZE na zdjęciach będzie 5 czerwonych kropek ułożonych jakby w koło
+    # i wystarczy wziąć tą środkową)
     y1,x1 = red_points[0][2], red_points[1][2]
 
     # znajduje czerwone punkty na drugim zdjęciu
@@ -402,7 +393,6 @@ def calculate_vector(p1,p2):
 
 #do łączenia dwóch zdjęć
 def join_photos(p1,p2,x,y):
-    #to się potem zmieni
     p2_height = p2.shape[0]
     p2_width = p2.shape[1]
 

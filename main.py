@@ -1,12 +1,11 @@
 #TESTOWANIE: po kliknięciu "Load Photos" dobrze wybrać któryś z folderów w "zdjęcia"
 #Kolejne foldery testowe (jak chcesz je stworzyć) powinny mieć same zdjęcia z png
-#Aktualnie zdjęcie "razem.png" to placeholder efektu dopasowania wszystkich fragmentów
 
 #Nie trzeba się przejmować "libpng warning: iCCP: known incorrect sRGB profile"
 #To po prostu się wypisuje w konsoli i tyle, nic się nie psuje z tego co wiem
 
-#ten plik głównie odpowiada za interfejs użytkownika
-#wszystko związane z algorytmem dopasowywania fragmentów na pewno ma być w innym pliku
+#ten plik głównie odpowiada za główny interfejs użytkownika
+#(okno do akceptacji czy odrzucenia dopasowania jest w dialog_window.py)
 import sys
 import os
 import cv2 as cv
@@ -14,14 +13,14 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QLabel, QSlider, QFileDialog, QVBoxLayout, \
     QMessageBox, QSpinBox, QLineEdit, QProgressDialog
-from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features, match_all_photos_features,get_sorted_matches
+from photos_opencv import open_photo, get_crop,open_photo,get_contours, detect_edge_features
 from matching import true_match_all_photos,draw_matches
 from dialog_window import PreviewDialog
 import tempfile
 import uuid
 
 
-#rozmiary okna aplikacji, można zmieniać do testowania
+#rozmiary okna aplikacji
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 900
 
@@ -36,7 +35,6 @@ class MainWindow(QMainWindow):
         self.setFixedHeight(WINDOW_HEIGHT)
 
         #tworzenie layout'u, który po prostu trzyma jakieś zdjęcie
-        #nie ruszać tego
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout()
@@ -49,7 +47,7 @@ class MainWindow(QMainWindow):
         #się przełożyć na QPixMap
         self.end_result = QPixmap()
 
-        #"łączenie" jest na razie udawane, wczytujemy gotowca tu sprecyzowanego:
+        #placeholder
         self.temporary_filepath = 'zdjecia/razem.png'
 
         #stworzenie ui
@@ -105,7 +103,7 @@ class MainWindow(QMainWindow):
 
         
         #przycisk do zobaczenia następnego zdjęcia z załadowanych
-        # nie da się go kliknąć póki nie załadowano zdjęć
+        #nie da się go kliknąć póki nie załadowano zdjęć
         button_next = QPushButton(">>",self)
         button_next.setCheckable(False)
         button_next.setEnabled(False)
@@ -217,8 +215,9 @@ class MainWindow(QMainWindow):
         )
         self.goto_photo_input.returnPressed.connect(self.go_to_photo)
 
-    # Działa bardzo podobnie do connect photos, ale robi to automatycznie dla wszystkich zdjęć
-    # niestety działa tylko dla prostych przypadków i może się zaciąć
+    # Działa bardzo podobnie do connect photos, ale robi to automatycznie
+    # dla wszystkich zdjęć
+    # Niestety działa tylko dla prostych przypadków i może się zaciąć
     def connect_all_photos(self):
         try:
             # Sprawdzamy, czy mamy z czym pracować
@@ -377,6 +376,7 @@ class MainWindow(QMainWindow):
                 but_next.setEnabled(True)
             but_egdes = self.findChildren(QPushButton)[5]
             but_egdes.setEnabled(True)
+
             #wyświetlenie pierwszego zdjęcia z folderu
             self.set_photo(self.photos_list[0])
 
@@ -487,6 +487,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.message_box(str(e), "Error")
 
+    # do pokazywania krawędzi i wierzchołków zdjęcia
     def show_edges(self):
         if not self.photos_list:
             return
@@ -561,24 +562,11 @@ class MainWindow(QMainWindow):
         label = QLabel(self)
         pixmap = QPixmap(to_what)
 
-        #zdobycie wartości do odpowiedniego przycięcia ustawianego zdjęcia
-        #x, y, width, height = get_crop(to_what)
-
-
-        #WIĘC OGÓLNIE TO TO PRZYCINANIE MOŻNA SOBIE OLAĆ
-        #WAŻNE BY ZA KULISAMI PRZYCINAŁO SIĘ DOBRZE, ALE
-        #TE ZDJĘCIA CO WIDZI UŻYTKOWNIK NIE MUSZĄ BYĆ PRZYCIĘTE
-        #TO TYLKO MARNOWANIE CZASU NA COŚ CO W SUMIE NIE MA UŻYTECZNOŚCI
-
-        #(można odkomentować jak ktoś ma bardzo ochotę to naprawiać)
-        #przycięcie zdjęcia
-        #cropped_pixmap = pixmap.copy(x, y, width, height)
-        #(ale mnie to już nie obchodzi)
-
-
+        #wcześniej było przycinane, teraz już nie jest
         cropped_pixmap = pixmap
         width = cropped_pixmap.width()
         height = cropped_pixmap.height()
+
         #wsadzenie przyciętego zdjęcia do label
         label.setPixmap(cropped_pixmap)
 

@@ -2,10 +2,14 @@ import cv2 as cv
 import numpy as np
 import math
 
+#Plik do operacjach na zdjęciach wykonywanych
+#biblioteką OpenCV
 
+#otwiera zdjęcie
 def open_photo(photo):
     return cv.imread(photo, cv.IMREAD_UNCHANGED)
 
+#znajduje kontury zdjęcia
 def get_contours(photo):
     # znajdywanie konturów zdjęcia
     img = open_photo(photo)
@@ -336,106 +340,6 @@ def detect_edge_features(photo, k=8, angle_thresh_deg=15, min_separation=10, vis
     return features, vis
 
 
-#Jako argument bierze listę ścieżek do plików
-#Zwraca graf dopasowań, czyli taki słownik gdzie jest napisane
-#które zdjęcie łączy sięz któym i jakim punktem?
-#Ogólnie to coś może być nie tak z działaniem tej funkcji, bo dopiero
-#po zwiększeniu max_dist faktycznie coś znajduje, mimo że na bank mamy
-#punkty co leżą bliżej niż 50 pikseli od siebie
-def match_all_photos_features(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
-    """
-    Dopasowuje cechy wszystkich zdjęć między sobą.
-    Zwraca graf dopasowań:
-    """
-    features_list = []
-    for photo in photos:
-        resized_photo, scale = resize_photo_for_analysis(photo, max_dim=800)
-        features, _ = detect_edge_features(resized_photo, k=10, angle_thresh_deg=15, min_separation=12)
-        # zachowanie punktow w oryginalnym rozmiarze
-        for f in features:
-            f['point'] = (int(f['point'][0] / scale), int(f['point'][1] / scale))
-        features_list.append(features)
-    matches_graph = {i: {} for i in range(len(photos))}
-
-    for i in range(len(photos)):
-        for j in range(len(photos)):
-            if i == j:
-                continue
-            matches = []
-            for f_i in features_list[i]:
-                for f_j in features_list[j]:
-                    # wypustka pasuje do wcięcia i odwrotnie
-                    if f_i['type'] == 'protrusion' and f_j['type'] == 'indentation':
-                        dx = f_i['point'][0] - f_j['point'][0]
-                        dy = f_i['point'][1] - f_j['point'][1]
-                        dist = (dx**2 + dy**2)**0.5
-                        if dist <= max_dist:
-                            matches.append((f_i, f_j))
-            matches_graph[i][j] = matches
-    return matches_graph
-
-
-#Jako argument bierze ścieżki do plików
-#Zwraca liste która składa się z takich
-# {zdjecie1,zdjecie2,cechyRoguZdjecia1,cechyRoguZdjecia2,dystans}
-#Działać działa, ale czy dobrze to należy przetestować
-def get_sorted_matches(photos, k=10, angle_thresh_deg=15, min_separation=12, max_dist=50):
-
-    #Tworzy listę dopasowań między cechami wszystkich zdjęć i sortuje je według odległości.
-    #trzeba dodac funkcje do tego
-
-    features_list = []
-    for photo in photos:
-        photo = open_photo(photo)
-        features, _ = detect_edge_features(photo, k=k, angle_thresh_deg=angle_thresh_deg, min_separation=min_separation)
-        features_list.append(features)
-
-    sorted_matches = []
-
-    for i in range(len(photos)):
-        for j in range(len(photos)):
-            if i == j:
-                continue
-            for f_i in features_list[i]:
-                for f_j in features_list[j]:
-                    if f_i['type'] == 'protrusion' and f_j['type'] == 'indentation':
-                        dx = f_i['point'][0] - f_j['point'][0]
-                        dy = f_i['point'][1] - f_j['point'][1]
-                        dist = (dx**2 + dy**2)**0.5
-                        if dist <= max_dist:
-                            sorted_matches.append((i, j, f_i, f_j, dist))
-
-    # sortowanie po odległości rosnąco
-    sorted_matches.sort(key=lambda x: x[4])
-
-    return sorted_matches
-    return sorted_matches
-
-
-def resize_photo_for_analysis(photo, max_dim=800):
-    """
-    Skaluje zdjęcie tak, żeby największy wymiar nie przekroczył max_dim.
-    """
-    photo = cv.imread(photo)
-    h, w = photo.shape[:2]
-    scale = 1.0
-    if max(h, w) > max_dim:
-        scale = max_dim / max(h, w)
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        resized = cv.resize(photo, (new_w, new_h), interpolation=cv.INTER_AREA)
-        return resized, scale
-    else:
-        return photo.copy(), 1.0
-
-#Do testowania funkcji match_all_photo_features, w któej coś trzeba naprawić
-# import os
-# folder = "zdjecia/foto_testowe"
-# max_distance = 100
-# photos = []
-# for filename in os.listdir(folder):
-#     photos.append(os.path.join(folder, filename))
-# print(match_all_photos_features(photos=photos,max_dist=max_distance))
 
 
 
